@@ -370,10 +370,34 @@ body {
 }
 
 /* Description */
-.description {
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     margin-bottom: 24px;
+}
+
+.description {
     color: #374151;
     line-height: 1.6;
+    flex: 1;
+}
+
+.logout-btn {
+    padding: 8px 16px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 16px;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background: #dc2626;
 }
 
 .description p {
