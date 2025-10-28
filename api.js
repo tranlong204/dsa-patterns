@@ -1,10 +1,38 @@
 // API client for backend integration
-const API_BASE_URL = 'http://localhost:8000';
+// Determine API base from URL param ?api= or localStorage override, fallback to localhost
+(function configureApiBase() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const apiParam = params.get('api');
+        if (apiParam) {
+            localStorage.setItem('API_BASE_URL', apiParam);
+        }
+    } catch (e) { /* noop */ }
+})();
+
+const API_BASE_URL = (function() {
+    const stored = localStorage.getItem('API_BASE_URL');
+    return stored && stored.trim() !== '' ? stored : 'http://localhost:8000';
+})();
 
 class APIClient {
     constructor(baseUrl = API_BASE_URL) {
         this.baseUrl = baseUrl;
-        this.userId = this.getOrCreateUserId();
+        // Use JWT username (sub) as user_id
+        this.userId = this.getJwtUsername() || this.getOrCreateUserId();
+    }
+
+    getJwtUsername() {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) return null;
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            return payload && payload.sub ? String(payload.sub) : null;
+        } catch (e) {
+            return null;
+        }
     }
 
     getOrCreateUserId() {
