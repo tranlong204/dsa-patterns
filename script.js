@@ -473,6 +473,13 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
             });
             
             content.appendChild(table);
+            
+            // Add "Add Problem" button at the end of category
+            const addProblemBtn = document.createElement('div');
+            addProblemBtn.className = 'add-problem-btn';
+            addProblemBtn.innerHTML = '<button class="add-btn">+ Add Problem</button>';
+            addProblemBtn.onclick = () => showAddProblemModal(categoryName, [categoryName]);
+            content.appendChild(addProblemBtn);
         }
     }
     
@@ -632,6 +639,13 @@ function createSubcategory(name, problems) {
     
     tableWrapper.appendChild(table);
     subContent.appendChild(tableWrapper);
+    
+    // Add "Add Problem" button at the end of subcategory
+    const addProblemBtn = document.createElement('div');
+    addProblemBtn.className = 'add-problem-btn';
+    addProblemBtn.innerHTML = '<button class="add-btn">+ Add Problem</button>';
+    addProblemBtn.onclick = () => showAddProblemModal(name, problems.length > 0 ? problems[0].topics : []);
+    subContent.appendChild(addProblemBtn);
     
     // Add event listener
     subHeader.addEventListener('click', () => {
@@ -1059,3 +1073,92 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('access_token');
     window.location.href = 'login.html';
 });
+
+// Show add problem modal
+function showAddProblemModal(subtopic, topics) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('addProblemModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'addProblemModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Add New Problem</h2>
+                <form id="addProblemForm">
+                    <div class="form-group">
+                        <label for="problemTitle">Problem Title</label>
+                        <input type="text" id="problemTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemNumber">Problem Number</label>
+                        <input type="number" id="problemNumber" name="number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemDifficulty">Difficulty</label>
+                        <select id="problemDifficulty" name="difficulty" required>
+                            <option value="Easy">Easy</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Hard">Hard</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemLink">LeetCode Link</label>
+                        <input type="url" id="problemLink" name="link" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemSubtopic">Subtopic</label>
+                        <input type="text" id="problemSubtopic" name="subtopic" readonly>
+                    </div>
+                    <button type="submit" class="submit-btn">Add Problem</button>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Close modal when clicking X or outside
+        modal.querySelector('.close-modal').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Set subtopic and topics
+    document.getElementById('problemSubtopic').value = subtopic;
+    
+    // Show modal
+    modal.style.display = 'block';
+    
+    // Handle form submission
+    const form = document.getElementById('addProblemForm');
+    const oldHandler = form.onclick;
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const problemData = {
+            number: parseInt(document.getElementById('problemNumber').value),
+            title: document.getElementById('problemTitle').value,
+            difficulty: document.getElementById('problemDifficulty').value,
+            topics: topics,
+            link: document.getElementById('problemLink').value,
+            subtopic: subtopic
+        };
+        
+        try {
+            const newProblem = await api.createProblem(problemData);
+            modal.style.display = 'none';
+            // Reload problems from API and re-render
+            const allProblems = await api.getAllProblems();
+            leetcodeProblems = allProblems;
+            renderProblemsByTopic();
+            alert('Problem added successfully!');
+        } catch (error) {
+            console.error('Failed to add problem:', error);
+            alert('Failed to add problem. Please try again.');
+        }
+    };
+}

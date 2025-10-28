@@ -90,6 +90,13 @@ class APIClient {
         return await this.request(`/api/problems/by-category/${category}`);
     }
 
+    async createProblem(problemData) {
+        return await this.request('/api/problems/', {
+            method: 'POST',
+            body: JSON.stringify(problemData)
+        });
+    }
+
     // User Progress API
     async getSolvedProblems() {
         return await this.request(`/api/user/${this.userId}/solved`);
