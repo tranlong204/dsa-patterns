@@ -37,12 +37,18 @@ async def create_problem(problem: ProblemCreate):
         supabase = get_supabase()
         # Convert topics list to JSON string for Supabase
         data = problem.dict()
-        # Remove 'id' if present (Supabase auto-generates it)
-        if 'id' in data:
-            del data['id']
-        data['topics'] = json.dumps(data['topics'])
+        # Explicitly build insert dict without id
+        insert_data = {
+            'number': data['number'],
+            'title': data['title'],
+            'difficulty': data['difficulty'],
+            'topics': json.dumps(data['topics']),
+            'link': data['link'],
+        }
+        if 'subtopic' in data and data['subtopic']:
+            insert_data['subtopic'] = data['subtopic']
         
-        response = supabase.table("problems").insert(data).execute()
+        response = supabase.table("problems").insert(insert_data).execute()
         return Problem(**response.data[0])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
