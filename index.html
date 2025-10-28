@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode Patterns - Practice & Track</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <!-- Activity Section -->
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">Activity</h2>
+                <button class="timeframe-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Last 7 days
+                </button>
+                <div class="days-stat">
+                    <div class="days-number" id="daysSpent">02</div>
+                    <div class="days-label">Days spent</div>
+                </div>
+                <div class="activity-grid">
+                    <div class="activity-day active">Tue</div>
+                    <div class="activity-day active">Wed</div>
+                    <div class="activity-day active">Thu</div>
+                    <div class="activity-day">Fri</div>
+                    <div class="activity-day">Sat</div>
+                    <div class="activity-day">Sun</div>
+                    <div class="activity-day">Mon</div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">Progress</h2>
+                <div class="progress-stat">
+                    <div class="progress-number" id="totalProgress">1%</div>
+                    <div class="progress-label">Total problems</div>
+                </div>
+                
+                <div class="difficulty-progress">
+                    <div class="difficulty-item">
+                        <span class="difficulty-label">Easy</span>
+                        <span class="difficulty-count" id="easyCount">14/209</span>
+                        <div class="difficulty-bar">
+                            <div class="difficulty-fill easy" id="easyFill"></div>
+                        </div>
+                    </div>
+                    <div class="difficulty-item">
+                        <span class="difficulty-label">Medium</span>
+                        <span class="difficulty-count" id="mediumCount">5/651</span>
+                        <div class="difficulty-bar">
+                            <div class="difficulty-fill medium" id="mediumFill"></div>
+                        </div>
+                    </div>
+                    <div class="difficulty-item">
+                        <span class="difficulty-label">Hard</span>
+                        <span class="difficulty-count" id="hardCount">0/366</span>
+                        <div class="difficulty-bar">
+                            <div class="difficulty-fill hard" id="hardFill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges Section -->
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">Badges</h2>
+                <div class="badges">
+                    <div class="badge bronze active">BRONZE</div>
+                    <div class="badge silver">SILVER</div>
+                </div>
+                <div class="current-badge">Current badge: Bronze</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Activity Calendar -->
+            <div class="activity-calendar-container">
+                <div class="calendar-wrapper">
+                    <div id="calendarHeatmap"></div>
+                    <div class="calendar-labels">
+                        <span style="color: #666; font-size: 14px;">Current streak: <strong id="currentStreak">0</strong></span>
+                        <span style="color: #666; font-size: 14px;">Max streak: <strong id="maxStreak">0</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="tabs">
+                <button class="tab active">All DSA Patterns</button>
+                <span class="gift-icon">🎁</span>
+            </div>
+
+            <!-- Description -->
+            <div class="description">
+                <p>Fraz's All DSA Patterns is an ideal resource to learn Data Structures and Algorithms. Boost your Coding ratings and Crack your Dream Job. Explore more than <strong>1,200 curated DSA questions</strong>, organized by patterns and difficulty for beginners and experienced programmers.</p>
+                <p class="cta">If you want to be good at DSA, START NOW 🔥</p>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <input type="text" id="searchInput" class="search-bar" placeholder="Search">
+                <div class="action-buttons">
+                    <button id="expandAllBtn" class="action-btn">Expand</button>
+                    <button id="collapseAllBtn" class="action-btn">Collapse</button>
+                    <button id="revisionListBtn" class="action-btn">Revision List</button>
+                    <button id="showSolvedBtn" class="action-btn">Show Solved</button>
+                    <button id="showUnsolvedBtn" class="action-btn">Show Unsolved</button>
+                </div>
+            </div>
+
+            <!-- Problem Categories -->
+            <div class="problem-categories" id="problemCategories">
+                <!-- Categories will be dynamically generated -->
+            </div>
+        </main>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,922 @@
+// Load saved progress from localStorage
+let solvedProblems = JSON.parse(localStorage.getItem('solvedProblems')) || [];
+let activityDates = JSON.parse(localStorage.getItem('activityDates')) || {};
+let revisionProblems = JSON.parse(localStorage.getItem('revisionProblems')) || [];
+let isRevisionFilterActive = false;
+let currentFilter = null; // 'solved', 'unsolved', or null (show all)
+
+// Track activity when a problem is solved
+function trackActivity(problemId, date = new Date()) {
+    const dateKey = formatDate(date);
+    if (!activityDates[dateKey]) {
+        activityDates[dateKey] = [];
+    }
+    if (!activityDates[dateKey].includes(problemId)) {
+        activityDates[dateKey].push(problemId);
+        localStorage.setItem('activityDates', JSON.stringify(activityDates));
+        renderCalendar();
+    }
+}
+
+// Remove activity when a problem is unchecked
+function removeActivity(problemId) {
+    // Find and remove this problem from all dates
+    for (const dateKey in activityDates) {
+        if (activityDates[dateKey].includes(problemId)) {
+            activityDates[dateKey] = activityDates[dateKey].filter(id => id !== problemId);
+            // Remove the date entry if it's now empty
+            if (activityDates[dateKey].length === 0) {
+                delete activityDates[dateKey];
+            }
+        }
+    }
+    localStorage.setItem('activityDates', JSON.stringify(activityDates));
+    renderCalendar();
+}
+
+// Clean up activity tracking to only include problems that are actually solved
+function cleanupActivityTracking() {
+    let hasChanges = false;
+    
+    // Create a Set of solved problem IDs for faster lookup
+    const solvedSet = new Set(solvedProblems);
+    
+    // Go through all activity dates and remove problems that aren't solved
+    for (const dateKey in activityDates) {
+        const originalLength = activityDates[dateKey].length;
+        activityDates[dateKey] = activityDates[dateKey].filter(id => solvedSet.has(id));
+        
+        // If no problems left for this date, remove the date
+        if (activityDates[dateKey].length === 0) {
+            delete activityDates[dateKey];
+            hasChanges = true;
+        } else if (activityDates[dateKey].length !== originalLength) {
+            hasChanges = true;
+        }
+    }
+    
+    // If we made changes, save and re-render
+    if (hasChanges) {
+        localStorage.setItem('activityDates', JSON.stringify(activityDates));
+        renderCalendar();
+    }
+}
+
+// Format date as YYYY-MM-DD
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Group problems by topic
+function groupProblemsByTopic(problems) {
+    const grouped = {};
+    problems.forEach(problem => {
+        const topics = problem.topics || ['General'];
+        topics.forEach(topic => {
+            if (!grouped[topic]) {
+                grouped[topic] = [];
+            }
+            grouped[topic].push(problem);
+        });
+    });
+    return grouped;
+}
+
+// Count problems by difficulty
+function countByDifficulty(problems) {
+    return {
+        easy: problems.filter(p => p.difficulty === 'Easy').length,
+        medium: problems.filter(p => p.difficulty === 'Medium').length,
+        hard: problems.filter(p => p.difficulty === 'Hard').length,
+        solved: problems.filter(p => solvedProblems.includes(p.id)).length
+    };
+}
+
+// Update sidebar statistics
+function updateSidebarStats() {
+    const counts = countByDifficulty(leetcodeProblems);
+    const total = leetcodeProblems.length;
+    
+    // Update total progress
+    const percentage = total > 0 ? Math.round((solvedProblems.length / total) * 100) : 0;
+    document.getElementById('totalProgress').textContent = percentage + '%';
+    
+    // Update difficulty progress
+    const easyProblems = leetcodeProblems.filter(p => p.difficulty === 'Easy');
+    const mediumProblems = leetcodeProblems.filter(p => p.difficulty === 'Medium');
+    const hardProblems = leetcodeProblems.filter(p => p.difficulty === 'Hard');
+    
+    const easySolved = easyProblems.filter(p => solvedProblems.includes(p.id)).length;
+    const mediumSolved = mediumProblems.filter(p => solvedProblems.includes(p.id)).length;
+    const hardSolved = hardProblems.filter(p => solvedProblems.includes(p.id)).length;
+    
+    document.getElementById('easyCount').textContent = `${easySolved}/${easyProblems.length}`;
+    document.getElementById('mediumCount').textContent = `${mediumSolved}/${mediumProblems.length}`;
+    document.getElementById('hardCount').textContent = `${hardSolved}/${hardProblems.length}`;
+    
+    // Update progress bars
+    const easyPercentage = easyProblems.length > 0 ? (easySolved / easyProblems.length) * 100 : 0;
+    const mediumPercentage = mediumProblems.length > 0 ? (mediumSolved / mediumProblems.length) * 100 : 0;
+    const hardPercentage = hardProblems.length > 0 ? (hardSolved / hardProblems.length) * 100 : 0;
+    
+    document.getElementById('easyFill').style.width = easyPercentage + '%';
+    document.getElementById('mediumFill').style.width = mediumPercentage + '%';
+    document.getElementById('hardFill').style.width = hardPercentage + '%';
+    
+    // Update streak (simplified - you can enhance this with actual activity tracking)
+    document.getElementById('currentStreak').textContent = '0';
+}
+
+// Render problems by topic with proper categorization
+function renderProblemsByTopic(problems = leetcodeProblems) {
+    const container = document.getElementById('problemCategories');
+    container.innerHTML = '';
+    
+    // Apply revision filter if active
+    let problemsToShow = problems;
+    if (isRevisionFilterActive) {
+        problemsToShow = problems.filter(p => revisionProblems.includes(p.id));
+    }
+    
+    // Apply solved/unsolved filter if active
+    if (currentFilter === 'solved') {
+        problemsToShow = problemsToShow.filter(p => solvedProblems.includes(p.id));
+    } else if (currentFilter === 'unsolved') {
+        problemsToShow = problemsToShow.filter(p => !solvedProblems.includes(p.id));
+    }
+    
+    const grouped = groupProblemsByTopic(problemsToShow);
+    
+    // Define order for main categories (matching Leetcode_problem_set.html pattern structure)
+    // Pattern-based organization as in Leetcode_problem_set.html
+    const categoryOrder = [
+        // Programming and Fundamentals
+        'Programming Fundamentals', 'Time and Space Complexity / Online Judge', 'Dsa Fundamentals',
+        // Core DSA patterns  
+        'Hashing', '2 Pointers', 'Two Pointers', 'Sliding Window',
+        'Stack', 'Queue', 'Linked List', 'Linked Lists',
+        'Binary Tree', 'Trees', 'Binary Search', 'Binary Search Tree',
+        'Heap (Priority Queue)', 'Heap',
+        'Recursion & Backtracking', 'Backtracking',
+        'Dynamic Programming', 'Dynamic Programming Level 1', 'Dynamic Programming Level 2', 
+        'Greedy', 'Graphs', 'Tries', 'Bit Manipulation', 
+        'Matrix', 'Sorting', 'String Matching Algos', 'Prefix Sum',
+        'Intervals', 'Game Theory', 'Combinatorics & Geometry',
+        'Advance algorithm'
+    ];
+    
+    // Render categories in order
+    categoryOrder.forEach(categoryName => {
+        if (grouped[categoryName] && grouped[categoryName].length > 0) {
+            const section = createTopicSectionWithSubcategories(categoryName, grouped[categoryName], []);
+            container.appendChild(section);
+        }
+    });
+    
+    // Add any remaining topics not in the ordered list
+    Object.keys(grouped).forEach(topic => {
+        if (!categoryOrder.includes(topic) && grouped[topic].length > 0) {
+            const section = createTopicSectionWithSubcategories(topic, grouped[topic], []);
+            container.appendChild(section);
+        }
+    });
+    
+    updateSidebarStats();
+}
+
+// Create topic section with subcategories
+function createTopicSectionWithSubcategories(categoryName, problems, subcategoryNames) {
+    const section = document.createElement('div');
+    section.className = 'category';
+    
+    const header = document.createElement('div');
+    header.className = 'category-header';
+    header.innerHTML = `
+        <span class="category-title">${categoryName}</span>
+        <span class="category-arrow">›</span>
+    `;
+    
+    const content = document.createElement('div');
+    content.className = 'category-content';
+    
+    // Special handling for categories with subcategories (like Sliding Window, 2 Pointers, Stack, etc.)
+    if (categoryName === 'Sliding Window') {
+        const { fixedSize, dynamicSize } = categorizeSlidingWindow(problems);
+        
+        if (fixedSize.length > 0) {
+            const subcategory = createSubcategory('Fixed Size Sliding-Window', fixedSize);
+            content.appendChild(subcategory);
+        }
+        
+        if (dynamicSize.length > 0) {
+            const subcategory = createSubcategory('Dynamic Size Sliding-Window', dynamicSize);
+            content.appendChild(subcategory);
+        }
+        
+        // If no subcategories match, show all problems in a single table
+        if (fixedSize.length === 0 && dynamicSize.length === 0) {
+            const table = document.createElement('table');
+            table.className = 'problem-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Difficulty</th>
+                        <th>Practice</th>
+                        <th>Solution</th>
+                        <th>Revision</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            problems.forEach(problem => {
+                const row = createProblemRow(problem);
+                tbody.appendChild(row);
+            });
+            
+            content.appendChild(table);
+        }
+    } else if (categoryName === 'Two Pointers' || categoryName === '2 Pointers') {
+        // Categorize 2 Pointers problems into Arrays vs Strings
+        const arrayProblems = problems.filter(p => {
+            const title = p.title.toLowerCase();
+            return !title.includes('string') || (title.includes('string') && title.includes('array'));
+        });
+        const stringProblems = problems.filter(p => {
+            const title = p.title.toLowerCase();
+            return title.includes('string') && !title.includes('array');
+        });
+        
+        if (arrayProblems.length > 0) {
+            const subcategory = createSubcategory('Two Pointer on Arrays', arrayProblems);
+            content.appendChild(subcategory);
+        }
+        
+        if (stringProblems.length > 0) {
+            const subcategory = createSubcategory('Two Pointer on Strings', stringProblems);
+            content.appendChild(subcategory);
+        }
+        
+        // If no subcategories match, show all problems in a single table
+        if (arrayProblems.length === 0 && stringProblems.length === 0) {
+            const table = document.createElement('table');
+            table.className = 'problem-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Difficulty</th>
+                        <th>Practice</th>
+                        <th>Solution</th>
+                        <th>Revision</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            problems.forEach(problem => {
+                const row = createProblemRow(problem);
+                tbody.appendChild(row);
+            });
+            
+            content.appendChild(table);
+        }
+    } else if (categoryName === 'Stack') {
+        // Group Stack problems by subtopic
+        const subtopicGroups = {};
+        
+        problems.forEach(problem => {
+            const subtopic = problem.subtopic || 'Other';
+            if (!subtopicGroups[subtopic]) {
+                subtopicGroups[subtopic] = [];
+            }
+            subtopicGroups[subtopic].push(problem);
+        });
+        
+        // Define order for Stack subcategories
+        const stackSubcategoryOrder = [
+            'Parentheses Problem',
+            'Design Problems',
+            'Advance Stack Problems',
+            'Monotonic Stack'
+        ];
+        
+        // Render subcategories in order
+        const otherTopics = [];
+        stackSubcategoryOrder.forEach(subtopicName => {
+            if (subtopicGroups[subtopicName] && subtopicGroups[subtopicName].length > 0) {
+                const subcategory = createSubcategory(subtopicName, subtopicGroups[subtopicName]);
+                content.appendChild(subcategory);
+            }
+        });
+        
+        // Add any remaining topics not in the ordered list
+        Object.keys(subtopicGroups).forEach(subtopic => {
+            if (!stackSubcategoryOrder.includes(subtopic)) {
+                otherTopics.push(...subtopicGroups[subtopic]);
+            }
+        });
+        
+        if (otherTopics.length > 0) {
+            const subcategory = createSubcategory('Other', otherTopics);
+            content.appendChild(subcategory);
+        }
+    } else if (categoryName === 'Queue') {
+        // Group Queue problems by subtopic
+        const subtopicGroups = {};
+        
+        problems.forEach(problem => {
+            const subtopic = problem.subtopic || 'Other';
+            if (!subtopicGroups[subtopic]) {
+                subtopicGroups[subtopic] = [];
+            }
+            subtopicGroups[subtopic].push(problem);
+        });
+        
+        // Define order for Queue subcategories
+        const queueSubcategoryOrder = [
+            'Implementation Problems',
+            'Singly-Ended Queue',
+            'Doubly-Ended Queue'
+        ];
+        
+        // Render subcategories in order
+        const otherTopics = [];
+        queueSubcategoryOrder.forEach(subtopicName => {
+            if (subtopicGroups[subtopicName] && subtopicGroups[subtopicName].length > 0) {
+                const subcategory = createSubcategory(subtopicName, subtopicGroups[subtopicName]);
+                content.appendChild(subcategory);
+            }
+        });
+        
+        // Add any remaining topics not in the ordered list
+        Object.keys(subtopicGroups).forEach(subtopic => {
+            if (!queueSubcategoryOrder.includes(subtopic)) {
+                otherTopics.push(...subtopicGroups[subtopic]);
+            }
+        });
+        
+        if (otherTopics.length > 0) {
+            const subcategory = createSubcategory('Other', otherTopics);
+            content.appendChild(subcategory);
+        }
+    } else {
+        // Check if this category has subtopics (general handler for all categories with subtopics)
+        const hasSubtopics = problems.some(p => p.subtopic && p.subtopic.trim() !== '');
+        
+        if (hasSubtopics) {
+            // Group problems by subtopic
+            const subtopicGroups = {};
+            
+            problems.forEach(problem => {
+                const subtopic = problem.subtopic || 'Other';
+                if (!subtopicGroups[subtopic]) {
+                    subtopicGroups[subtopic] = [];
+                }
+                subtopicGroups[subtopic].push(problem);
+            });
+            
+            // Render all subcategories in alphabetical order
+            const sortedSubtopics = Object.keys(subtopicGroups).sort();
+            sortedSubtopics.forEach(subtopicName => {
+                if (subtopicGroups[subtopicName].length > 0) {
+                    const subcategory = createSubcategory(subtopicName, subtopicGroups[subtopicName]);
+                    content.appendChild(subcategory);
+                }
+            });
+        } else {
+            // No subcategories, create a simple table
+            const table = document.createElement('table');
+            table.className = 'problem-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Problem</th>
+                        <th>Difficulty</th>
+                        <th>Practice</th>
+                        <th>Solution</th>
+                        <th>Revision</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            problems.forEach(problem => {
+                const row = createProblemRow(problem);
+                tbody.appendChild(row);
+            });
+            
+            content.appendChild(table);
+        }
+    }
+    
+    // Add event listener for collapse/expand
+    header.addEventListener('click', () => {
+        content.classList.toggle('expanded');
+        header.classList.toggle('expanded');
+    });
+    
+    section.appendChild(header);
+    section.appendChild(content);
+    
+    return section;
+}
+
+// Categorize sliding window problems
+function categorizeSlidingWindow(problems) {
+    const fixedSizeKeywords = ['size', 'length', 'k radius', 'non-overlapping', 'distinct subarrays', 'sliding subarray', 'sliding window median', 'sliding window maximum', 'points you can obtain', 'size three', 'binary codes of size k', 'vowels in a substring of given length', 'average subarray', 'threshold', 'subarray beauty'];
+    const dynamicSizeKeywords = ['longest', 'repeating character replacement', 'minimum size', 'max consecutive', 'product less than', 'minimum window', 'substring with concatenation', 'dominant ones', 'absolute diff less than', 'subarray product', 'grumpy', 'nice subarrays', 'bounded maximum', 'frequency of the most frequent', 'minimum consecutive cards', 'good subarrays', 'subarrays with k different'];
+    
+    const fixedSize = [];
+    const dynamicSize = [];
+    
+    problems.forEach(problem => {
+        const title = problem.title.toLowerCase();
+        
+        // Check for fixed size keywords
+        const isFixedSize = fixedSizeKeywords.some(keyword => title.includes(keyword.toLowerCase()));
+        
+        if (isFixedSize) {
+            fixedSize.push(problem);
+        } else {
+            // Check for dynamic size keywords
+            const isDynamicSize = dynamicSizeKeywords.some(keyword => title.includes(keyword.toLowerCase()));
+            
+            if (isDynamicSize) {
+                dynamicSize.push(problem);
+            } else {
+                // Default to dynamic size for unknown patterns
+                dynamicSize.push(problem);
+            }
+        }
+    });
+    
+    return { fixedSize, dynamicSize };
+}
+
+// Create a collapsible topic section with subcategories
+function createTopicSection(topic, problems) {
+    const section = document.createElement('div');
+    section.className = 'category';
+    
+    const header = document.createElement('div');
+    header.className = 'category-header';
+    header.innerHTML = `
+        <span class="category-title">${topic}</span>
+        <span class="category-arrow">›</span>
+    `;
+    
+    const content = document.createElement('div');
+    content.className = 'category-content';
+    
+    // Special handling for Sliding Window with subcategories
+    if (topic === 'Sliding Window') {
+        const { fixedSize, dynamicSize } = categorizeSlidingWindow(problems);
+        
+        // Fixed Size Subcategory
+        if (fixedSize.length > 0) {
+            const subcategory = createSubcategory('Fixed Size Sliding-Window', fixedSize);
+            content.appendChild(subcategory);
+        }
+        
+        // Dynamic Size Subcategory
+        if (dynamicSize.length > 0) {
+            const subcategory = createSubcategory('Dynamic Size Sliding-Window', dynamicSize);
+            content.appendChild(subcategory);
+        }
+    } else {
+        // Regular single-level category
+        const table = document.createElement('table');
+        table.className = 'problem-table';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Problem</th>
+                    <th>Difficulty</th>
+                    <th>Practice</th>
+                    <th>Solution</th>
+                    <th>Revision</th>
+                </tr>
+            </thead>
+            <tbody id="problems-${topic}"></tbody>
+        `;
+        
+        content.appendChild(table);
+        
+        // Render problems
+        const tbody = table.querySelector('tbody');
+        problems.forEach(problem => {
+            const row = createProblemRow(problem);
+            tbody.appendChild(row);
+        });
+    }
+    
+    // Add event listener for collapse/expand
+    header.addEventListener('click', () => {
+        content.classList.toggle('expanded');
+        header.classList.toggle('expanded');
+    });
+    
+    section.appendChild(header);
+    section.appendChild(content);
+    
+    return section;
+}
+
+// Create a subcategory section
+function createSubcategory(name, problems) {
+    const subcategory = document.createElement('div');
+    subcategory.className = 'subcategory';
+    
+    const subHeader = document.createElement('div');
+    subHeader.className = 'subcategory-header';
+    subHeader.innerHTML = `
+        <span class="subcategory-arrow">›</span>
+        <span class="subcategory-title">${name}</span>
+    `;
+    
+    const subContent = document.createElement('div');
+    subContent.className = 'subcategory-content';
+    
+    // Create table wrapper with indentation
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'subcategory-table-wrapper';
+    
+    const table = document.createElement('table');
+    table.className = 'problem-table';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Problem</th>
+                <th>Difficulty</th>
+                <th>Practice</th>
+                <th>Solution</th>
+                <th>Revision</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    `;
+    
+    // Render problems
+    const tbody = table.querySelector('tbody');
+    problems.forEach(problem => {
+        const row = createProblemRow(problem);
+        tbody.appendChild(row);
+    });
+    
+    tableWrapper.appendChild(table);
+    subContent.appendChild(tableWrapper);
+    
+    // Add event listener
+    subHeader.addEventListener('click', () => {
+        subContent.classList.toggle('expanded');
+        subHeader.classList.toggle('expanded');
+    });
+    
+    subcategory.appendChild(subHeader);
+    subcategory.appendChild(subContent);
+    
+    return subcategory;
+}
+
+// Create a problem table row
+function createProblemRow(problem) {
+    const row = document.createElement('tr');
+    row.className = 'problem-row';
+    const isSolved = solvedProblems.includes(problem.id);
+    const isInRevision = revisionProblems.includes(problem.id);
+    
+    row.innerHTML = `
+        <td>
+            <div class="problem-name">
+                <input type="checkbox" class="problem-checkbox" ${isSolved ? 'checked' : ''} 
+                       data-problem-id="${problem.id}" />
+                <span>${problem.title}</span>
+            </div>
+        </td>
+        <td>
+            <span class="difficulty-badge ${problem.difficulty.toLowerCase()}">${problem.difficulty}</span>
+        </td>
+        <td>
+            <a href="${problem.link}" target="_blank" class="practice-link">🔗</a>
+        </td>
+        <td>
+            <span class="solution-text">Coming Soon</span>
+        </td>
+        <td>
+            <span class="revision-icon ${isInRevision ? 'in-revision' : ''}" data-problem-id="${problem.id}" style="cursor: pointer;">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="${isInRevision ? '#1f2937' : 'none'}" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 2v14l4-3 4 3V2"></path>
+                </svg>
+            </span>
+        </td>
+    `;
+    
+    // Add checkbox event listener
+    const checkbox = row.querySelector('.problem-checkbox');
+    checkbox.addEventListener('change', (e) => handleCheckboxChange(e, problem.id));
+    
+    // Add revision icon event listener
+    const revisionIcon = row.querySelector('.revision-icon');
+    revisionIcon.addEventListener('click', (e) => toggleRevision(problem.id));
+    
+    return row;
+}
+
+// Toggle revision status
+function toggleRevision(problemId) {
+    const index = revisionProblems.indexOf(problemId);
+    const isInRevision = index === -1; // Will be in revision after toggle
+    
+    if (index > -1) {
+        revisionProblems.splice(index, 1);
+    } else {
+        revisionProblems.push(problemId);
+    }
+    localStorage.setItem('revisionProblems', JSON.stringify(revisionProblems));
+    
+    // Update the icon in the UI
+    const icon = document.querySelector(`.revision-icon[data-problem-id="${problemId}"]`);
+    if (icon) {
+        icon.classList.toggle('in-revision');
+        
+        // Update the SVG fill attribute
+        const svg = icon.querySelector('svg');
+        if (svg) {
+            svg.setAttribute('fill', isInRevision ? '#1f2937' : 'none');
+        }
+    }
+}
+
+// Calculate streaks
+function calculateStreaks() {
+    const sortedDates = Object.keys(activityDates).sort();
+    let currentStreak = 0;
+    let maxStreak = 0;
+    let tempStreak = 0;
+    
+    const today = new Date();
+    const todayKey = formatDate(today);
+    
+    // Check if today has activity
+    let checkDate = new Date(today);
+    let hasCurrentActivity = false;
+    
+    if (sortedDates.length > 0) {
+        // Calculate current streak (backwards from today)
+        while (checkDate >= new Date(sortedDates[0])) {
+            const dateKey = formatDate(checkDate);
+            if (activityDates[dateKey] && activityDates[dateKey].length > 0) {
+                if (!hasCurrentActivity) {
+                    currentStreak++;
+                    hasCurrentActivity = true;
+                }
+            } else {
+                break; // Streak broken
+            }
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+        
+        // Calculate max streak
+        for (let i = 0; i < sortedDates.length; i++) {
+            if (i === 0) {
+                tempStreak = 1;
+                maxStreak = 1;
+            } else {
+                const prevDate = new Date(sortedDates[i - 1]);
+                const currDate = new Date(sortedDates[i]);
+                const diffDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    tempStreak++;
+                } else {
+                    tempStreak = 1;
+                }
+                maxStreak = Math.max(maxStreak, tempStreak);
+            }
+        }
+    }
+    
+    return { currentStreak, maxStreak };
+}
+
+// Render calendar heatmap
+function renderCalendar() {
+    const container = document.getElementById('calendarHeatmap');
+    container.innerHTML = '';
+    
+    const today = new Date();
+    const daysToShow = 371; // Show about 1 year + a few extra days
+    const weeks = Math.ceil(daysToShow / 7);
+    
+    // Create calendar data
+    const heatmapData = [];
+    
+    for (let i = daysToShow - 1; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateKey = formatDate(date);
+        const hasActivity = activityDates[dateKey] && activityDates[dateKey].length > 0;
+        
+        heatmapData.push({
+            date: dateKey,
+            hasActivity,
+            problemCount: activityDates[dateKey] ? activityDates[dateKey].length : 0
+        });
+    }
+    
+    // Create heatmap structure
+    const heatmapWrapper = document.createElement('div');
+    heatmapWrapper.className = 'calendar-heatmap-container';
+    
+    // Group by weeks (columns)
+    const weekColumns = [];
+    for (let w = 0; w < weeks; w++) {
+        const weekData = heatmapData.slice(w * 7, (w + 1) * 7);
+        weekColumns.push(weekData);
+    }
+    
+    // Render week columns
+    weekColumns.forEach((week, weekIndex) => {
+        const weekColumn = document.createElement('div');
+        weekColumn.className = 'heatmap-column';
+        
+        week.forEach(dayData => {
+            const dayCell = document.createElement('div');
+            
+            // Determine intensity level based on problem count
+            if (dayData.hasActivity && dayData.problemCount > 0) {
+                let intensityLevel = 'no-activity';
+                if (dayData.problemCount >= 11) {
+                    intensityLevel = 'intensity-4';
+                } else if (dayData.problemCount >= 6) {
+                    intensityLevel = 'intensity-3';
+                } else if (dayData.problemCount >= 3) {
+                    intensityLevel = 'intensity-2';
+                } else {
+                    intensityLevel = 'intensity-1';
+                }
+                dayCell.className = `calendar-day has-activity ${intensityLevel}`;
+                dayCell.title = `${dayData.problemCount} problem(s) solved on ${dayData.date}`;
+            } else {
+                dayCell.className = 'calendar-day no-activity';
+                dayCell.title = `No activity on ${dayData.date}`;
+            }
+            
+            weekColumn.appendChild(dayCell);
+        });
+        
+        heatmapWrapper.appendChild(weekColumn);
+    });
+    
+    container.appendChild(heatmapWrapper);
+    
+    // Update streaks
+    const { currentStreak, maxStreak } = calculateStreaks();
+    document.getElementById('currentStreak').textContent = currentStreak;
+    document.getElementById('maxStreak').textContent = maxStreak;
+}
+
+// Handle checkbox changes
+function handleCheckboxChange(event, problemId) {
+    const isChecked = event.target.checked;
+    
+    if (isChecked) {
+        if (!solvedProblems.includes(problemId)) {
+            solvedProblems.push(problemId);
+            trackActivity(problemId); // Track activity when solved
+        }
+    } else {
+        solvedProblems = solvedProblems.filter(id => id !== problemId);
+        removeActivity(problemId); // Remove activity tracking when unchecked
+    }
+    
+    localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
+    updateSidebarStats();
+}
+
+// Initialize categories as collapsed
+function initCategories() {
+    // Start with first category expanded
+    const firstCategory = document.querySelector('.category-header');
+    if (firstCategory) {
+        firstCategory.click();
+    }
+}
+
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    if (searchTerm === '') {
+        renderProblemsByTopic();
+    } else {
+        const filtered = leetcodeProblems.filter(p => 
+            p.title.toLowerCase().includes(searchTerm) ||
+            p.topics.some(topic => topic.toLowerCase().includes(searchTerm))
+        );
+        renderProblemsByTopic(filtered);
+    }
+});
+
+// Tab functionality
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+
+// Initialize
+cleanupActivityTracking(); // Clean up any orphaned activity tracking
+renderCalendar();
+renderProblemsByTopic();
+initCategories();
+
+// Expand/Collapse functionality
+document.getElementById('expandAllBtn').addEventListener('click', () => {
+    // Expand main categories
+    document.querySelectorAll('.category-content').forEach(content => {
+        content.classList.add('expanded');
+    });
+    document.querySelectorAll('.category-header').forEach(header => {
+        header.classList.add('expanded');
+    });
+    
+    // Expand subcategories
+    document.querySelectorAll('.subcategory-content').forEach(content => {
+        content.classList.add('expanded');
+    });
+    document.querySelectorAll('.subcategory-header').forEach(header => {
+        header.classList.add('expanded');
+    });
+});
+
+document.getElementById('collapseAllBtn').addEventListener('click', () => {
+    // Collapse main categories
+    document.querySelectorAll('.category-content').forEach(content => {
+        content.classList.remove('expanded');
+    });
+    document.querySelectorAll('.category-header').forEach(header => {
+        header.classList.remove('expanded');
+    });
+    
+    // Collapse subcategories
+    document.querySelectorAll('.subcategory-content').forEach(content => {
+        content.classList.remove('expanded');
+    });
+    document.querySelectorAll('.subcategory-header').forEach(header => {
+        header.classList.remove('expanded');
+    });
+});
+
+// Filter button functionality
+document.getElementById('showSolvedBtn').addEventListener('click', () => {
+    if (currentFilter === 'solved') {
+        // Toggle off
+        currentFilter = null;
+        document.getElementById('showSolvedBtn').classList.remove('active');
+    } else {
+        // Activate solved filter
+        currentFilter = 'solved';
+        document.getElementById('showSolvedBtn').classList.add('active');
+        document.getElementById('showUnsolvedBtn').classList.remove('active');
+    }
+    renderProblemsByTopic();
+});
+
+document.getElementById('showUnsolvedBtn').addEventListener('click', () => {
+    if (currentFilter === 'unsolved') {
+        // Toggle off
+        currentFilter = null;
+        document.getElementById('showUnsolvedBtn').classList.remove('active');
+    } else {
+        // Activate unsolved filter
+        currentFilter = 'unsolved';
+        document.getElementById('showUnsolvedBtn').classList.add('active');
+        document.getElementById('showSolvedBtn').classList.remove('active');
+    }
+    renderProblemsByTopic();
+});
+
+// Revision List filter
+document.getElementById('revisionListBtn').addEventListener('click', () => {
+    isRevisionFilterActive = !isRevisionFilterActive;
+    const btn = document.getElementById('revisionListBtn');
+    
+    if (isRevisionFilterActive) {
+        btn.classList.add('active');
+        btn.textContent = 'Exit Revision';
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = 'Revision List';
+    }
+    
+    renderProblemsByTopic();
+});
