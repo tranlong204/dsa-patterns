@@ -47,6 +47,7 @@ class APIClient {
     async request(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
         const config = {
+            method: options.method || 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
@@ -60,11 +61,17 @@ class APIClient {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
 
+        // If body is provided and not already in right format
+        if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
+            config.body = JSON.stringify(config.body);
+        }
+
         try {
             const response = await fetch(url, config);
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API error response:', errorText);
                 if (response.status === 401) {
-                    // Redirect to login
                     window.location.href = 'login.html';
                     return;
                 }
