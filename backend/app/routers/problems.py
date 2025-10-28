@@ -11,10 +11,22 @@ async def get_all_problems():
     """Get all problems"""
     try:
         supabase = get_supabase()
-        response = supabase.table("problems").select("*").execute()
+        # Get all problems, handling pagination
+        all_problems = []
+        offset = 0
+        limit = 1000
+        while True:
+            response = supabase.table("problems").select("*").range(offset, offset + limit - 1).execute()
+            if not response.data:
+                break
+            all_problems.extend(response.data)
+            if len(response.data) < limit:
+                break
+            offset += limit
+        
         # Parse topics from JSON string to list
         problems = []
-        for problem in response.data:
+        for problem in all_problems:
             if isinstance(problem.get('topics'), str):
                 problem['topics'] = json.loads(problem['topics'])
             problems.append(Problem(**problem))
