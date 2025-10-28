@@ -21,8 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('password', password);
 
         try {
-            // Use same API base as the app; API_BASE_URL is defined in api.js
-            const base = (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) ? API_BASE_URL : (localStorage.getItem('API_BASE_URL') || '');
+            // Get API base from URL params or localStorage; fallback to Render backend
+            let base = '';
+            const params = new URLSearchParams(window.location.search);
+            const apiParam = params.get('api');
+            if (apiParam) {
+                base = apiParam;
+                localStorage.setItem('API_BASE_URL', base);
+            } else {
+                base = localStorage.getItem('API_BASE_URL') || 'https://dsa-patterns-backend.onrender.com';
+            }
             const endpoint = (base || '').replace(/\/$/, '') + '/api/auth/login';
             const resp = await fetch(endpoint, {
                 method: 'POST',
