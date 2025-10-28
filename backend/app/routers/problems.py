@@ -37,6 +37,9 @@ async def create_problem(problem: ProblemCreate):
         supabase = get_supabase()
         # Convert topics list to JSON string for Supabase
         data = problem.dict()
+        # Remove 'id' if present (Supabase auto-generates it)
+        if 'id' in data:
+            del data['id']
         data['topics'] = json.dumps(data['topics'])
         
         response = supabase.table("problems").insert(data).execute()
