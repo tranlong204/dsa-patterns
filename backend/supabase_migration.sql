@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS user_progress (
     problem_id INTEGER NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
     solved BOOLEAN DEFAULT FALSE,
     solved_at DATE,
+    in_revision BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(user_id, problem_id)
@@ -51,6 +52,10 @@ CREATE POLICY "Users can update progress" ON user_progress
 DROP POLICY IF EXISTS "Users can insert progress" ON user_progress;
 CREATE POLICY "Users can insert progress" ON user_progress
     FOR INSERT WITH CHECK (true);
+    
+DROP POLICY IF EXISTS "Users can delete progress" ON user_progress;
+CREATE POLICY "Users can delete progress" ON user_progress
+    FOR DELETE USING (true);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

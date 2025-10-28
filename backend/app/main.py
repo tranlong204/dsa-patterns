@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import problems, user_progress
+from app.config import settings
 
 app = FastAPI(title="DSA Patterns API", version="1.0.0")
 
-# Enable CORS for frontend
+# Enable CORS for frontend using configured origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

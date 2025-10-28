@@ -77,6 +77,19 @@ class APIClient {
     async getCalendarData() {
         return await this.request(`/api/user/${this.userId}/calendar`);
     }
+
+    // Revision API
+    async getRevisionList() {
+        return await this.request(`/api/user/${this.userId}/revision`);
+    }
+
+    async addToRevision(problemId) {
+        return await this.request(`/api/user/${this.userId}/revision/${problemId}`, { method: 'POST' });
+    }
+
+    async removeFromRevision(problemId) {
+        return await this.request(`/api/user/${this.userId}/revision/${problemId}`, { method: 'DELETE' });
+    }
 }
 
 // Initialize API client

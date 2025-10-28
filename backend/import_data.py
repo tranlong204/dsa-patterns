@@ -2,6 +2,7 @@
 Script to import problems from data.js into Supabase
 """
 import json
+import ast
 import re
 from app.database import get_supabase
 
@@ -50,8 +51,18 @@ def import_problems():
         # Parse topics (could be a string representation or list)
         topics = problem['topics']
         if isinstance(topics, str):
-            # Try to parse as JSON or array string
-            topics = json.loads(topics) if topics.startswith('[') else [topics]
+            # Try to parse as JSON/array string (handles single or double quotes)
+            if topics.strip().startswith('['):
+                try:
+                    topics = json.loads(topics)
+                except Exception:
+                    try:
+                        topics = ast.literal_eval(topics)
+                    except Exception:
+                        # Fallback: strip quotes and wrap
+                        topics = [topics.strip().strip('"\'')]
+            else:
+                topics = [topics.strip().strip('"\'')]
         elif not isinstance(topics, list):
             topics = [str(topics)]
         

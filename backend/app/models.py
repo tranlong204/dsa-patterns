@@ -16,6 +16,7 @@ class UserProgress(BaseModel):
     user_id: str
     solved: bool
     solved_at: Optional[date] = None
+    in_revision: Optional[bool] = False
 
 class ProgressStats(BaseModel):
     total_problems: int

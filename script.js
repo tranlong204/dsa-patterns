@@ -690,16 +690,38 @@ function createProblemRow(problem) {
 }
 
 // Toggle revision status
-function toggleRevision(problemId) {
+async function toggleRevision(problemId) {
     const index = revisionProblems.indexOf(problemId);
     const isInRevision = index === -1; // Will be in revision after toggle
     
     if (index > -1) {
-        revisionProblems.splice(index, 1);
+        // remove locally only if API disabled; API path will source truth
+        if (!USE_API) {
+            revisionProblems.splice(index, 1);
+            localStorage.setItem('revisionProblems', JSON.stringify(revisionProblems));
+        }
     } else {
-        revisionProblems.push(problemId);
+        if (!USE_API) {
+            revisionProblems.push(problemId);
+            localStorage.setItem('revisionProblems', JSON.stringify(revisionProblems));
+        }
     }
-    localStorage.setItem('revisionProblems', JSON.stringify(revisionProblems));
+    
+    // Sync with API (source of truth)
+    if (USE_API) {
+        try {
+            if (isInRevision) {
+                await api.addToRevision(problemId);
+            } else {
+                await api.removeFromRevision(problemId);
+            }
+            // Refresh revision list from API to keep local state in sync
+            const revision = await api.getRevisionList();
+            revisionProblems = revision;
+        } catch (e) {
+            console.error('Failed to sync revision with API', e);
+        }
+    }
     
     // Update the icon in the UI
     const icon = document.querySelector(`.revision-icon[data-problem-id="${problemId}"]`);
@@ -777,6 +799,7 @@ async function renderCalendar() {
     
     // Load calendar data from API or localStorage
     let calendarDataMap = {};
+    let usedApiData = false;
     
     if (USE_API) {
         try {
@@ -784,15 +807,18 @@ async function renderCalendar() {
             for (const item of apiCalendarData) {
                 calendarDataMap[item.date] = item.problem_count;
             }
+            usedApiData = true;
         } catch (error) {
             console.error('Failed to fetch calendar data from API, using local storage:', error);
         }
     }
     
-    // Merge with localStorage data (fallback)
-    for (const dateKey in activityDates) {
-        const count = activityDates[dateKey].length;
-        calendarDataMap[dateKey] = (calendarDataMap[dateKey] || 0) + count;
+    // Only merge localStorage activity if API data wasn't used (prevents double counting)
+    if (!usedApiData) {
+        for (const dateKey in activityDates) {
+            const count = activityDates[dateKey].length;
+            calendarDataMap[dateKey] = (calendarDataMap[dateKey] || 0) + count;
+        }
     }
     
     // Create calendar data
@@ -924,6 +950,9 @@ async function initApp() {
             const solved = await api.getSolvedProblems();
             solvedProblems = solved;
             localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
+            // Load revision list from API only
+            const revision = await api.getRevisionList();
+            revisionProblems = revision;
             
             // Load progress stats
             await updateSidebarStats();

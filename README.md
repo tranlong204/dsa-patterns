@@ -20,11 +20,20 @@ A comprehensive tool for tracking your LeetCode problem-solving progress with or
 2. Your progress is automatically saved locally
 
 ### With Backend API (Supabase)
-1. Set up Supabase and run migrations (see `backend/README.md`)
-2. Configure environment variables in `backend/.env`
-3. Start the backend: `cd backend && uvicorn app.main:app --reload`
-4. Open `index.html` - it will automatically connect to the API
-5. Your progress is saved to Supabase database
+1. Navigate to backend: `cd backend`
+2. Run setup: `bash setup.sh` (creates virtual environment and installs dependencies)
+3. Update `backend/.env` with your Supabase credentials:
+   - `SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co`
+   - `SUPABASE_KEY=YOUR_SUPABASE_ANON_OR_SERVICE_KEY`
+4. Run SQL migration: Execute `supabase_migration.sql` in Supabase SQL Editor
+5. Import problems: `python import_data.py`
+6. Activate venv and start backend: 
+   ```bash
+   source venv/bin/activate
+   uvicorn app.main:app --reload
+   ```
+7. Open `index.html` - it will automatically connect to the API
+8. Your progress is saved to Supabase database
 
 ## Topics Covered
 

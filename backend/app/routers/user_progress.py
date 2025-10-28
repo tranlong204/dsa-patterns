@@ -47,15 +47,60 @@ async def mark_problem_solved(user_id: str, problem_id: int):
 
 @router.delete("/{user_id}/solved/{problem_id}")
 async def mark_problem_unsolved(user_id: str, problem_id: int):
-    """Mark a problem as unsolved for a user"""
+    """Mark a problem as unsolved for a user by setting solved to False"""
     try:
         supabase = get_supabase()
-        response = supabase.table("user_progress").update({
-            "solved": False,
-            "solved_at": None
-        }).eq("user_id", user_id).eq("problem_id", problem_id).execute()
-        
+        # Ensure row exists; if not, create one with solved False (idempotent)
+        existing = supabase.table("user_progress").select("*").eq("user_id", user_id).eq("problem_id", problem_id).execute()
+        if existing.data:
+            supabase.table("user_progress").update({
+                "solved": False,
+                "solved_at": None
+            }).eq("user_id", user_id).eq("problem_id", problem_id).execute()
+        else:
+            supabase.table("user_progress").insert({
+                "user_id": user_id,
+                "problem_id": problem_id,
+                "solved": False,
+                "solved_at": None
+            }).execute()
         return {"message": "Problem marked as unsolved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Revision endpoints
+@router.get("/{user_id}/revision", response_model=List[int])
+async def get_revision_list(user_id: str):
+    try:
+        supabase = get_supabase()
+        response = supabase.table("user_progress").select("problem_id").eq("user_id", user_id).eq("in_revision", True).execute()
+        return [row['problem_id'] for row in response.data]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{user_id}/revision/{problem_id}")
+async def add_to_revision(user_id: str, problem_id: int):
+    try:
+        supabase = get_supabase()
+        existing = supabase.table("user_progress").select("*").eq("user_id", user_id).eq("problem_id", problem_id).execute()
+        if existing.data:
+            supabase.table("user_progress").update({"in_revision": True}).eq("user_id", user_id).eq("problem_id", problem_id).execute()
+        else:
+            supabase.table("user_progress").insert({
+                "user_id": user_id,
+                "problem_id": problem_id,
+                "in_revision": True
+            }).execute()
+        return {"message": "Added to revision"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{user_id}/revision/{problem_id}")
+async def remove_from_revision(user_id: str, problem_id: int):
+    try:
+        supabase = get_supabase()
+        supabase.table("user_progress").update({"in_revision": False}).eq("user_id", user_id).eq("problem_id", problem_id).execute()
+        return {"message": "Removed from revision"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
