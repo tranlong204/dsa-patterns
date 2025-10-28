@@ -82,22 +82,23 @@ body {
 }
 
 .activity-day {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
+    width: 100%;
+    min-height: 8px;
+    background: #9333ea;
+    border-radius: 4px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    color: #6b7280;
+    color: #374151;
+    padding-top: 4px;
+    position: relative;
 }
 
-.activity-day.active {
-    background: #d8b4fe;
-    border-color: #d8b4fe;
-    color: #6b21a8;
+.activity-day:not(.active) {
+    background: #f3e8ff;
+    height: 8px;
 }
 
 /* Progress Section */

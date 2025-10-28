@@ -28,6 +28,7 @@ async function trackActivity(problemId, date = new Date()) {
         }
         
         renderCalendar();
+        updateActivityGrid();
     }
 }
 
@@ -55,6 +56,7 @@ async function removeActivity(problemId) {
     }
     
     renderCalendar();
+    updateActivityGrid();
 }
 
 // Clean up activity tracking to only include problems that are actually solved
@@ -762,6 +764,55 @@ async function toggleRevision(problemId) {
     }
 }
 
+// Update activity grid with bar heights
+function updateActivityGrid() {
+    const grid = document.getElementById('activityGrid');
+    if (!grid) return;
+    
+    // Get last 7 days
+    const today = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        days.push({
+            date: formatDate(date),
+            dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]
+        });
+    }
+    
+    // Count activity per day
+    const activityCounts = {};
+    Object.keys(activityDates).forEach(dateKey => {
+        activityCounts[dateKey] = activityDates[dateKey].length;
+    });
+    
+    // Find max count for scaling
+    const maxCount = Math.max(...Object.values(activityCounts), 1);
+    
+    // Update grid
+    grid.innerHTML = '';
+    days.forEach(day => {
+        const count = activityCounts[day.date] || 0;
+        const height = count > 0 ? (count / maxCount) * 100 : 8;
+        const dayEl = document.createElement('div');
+        dayEl.className = 'activity-day';
+        dayEl.textContent = day.dayName;
+        if (count > 0) {
+            dayEl.classList.add('active');
+            dayEl.style.height = `${height}%`;
+            dayEl.title = `${count} problem(s) on ${day.date}`;
+        } else {
+            dayEl.style.height = '8px';
+        }
+        grid.appendChild(dayEl);
+    });
+    
+    // Update days spent
+    const activeDays = days.filter(d => activityCounts[d.date] > 0).length;
+    document.getElementById('daysSpent').textContent = String(activeDays).padStart(2, '0');
+}
+
 // Calculate streaks
 function calculateStreaks() {
     const sortedDates = Object.keys(activityDates).sort();
@@ -996,6 +1047,7 @@ async function initApp() {
     }
     
     await renderCalendar();
+    updateActivityGrid();
     renderProblemsByTopic();
     initCategories();
 }

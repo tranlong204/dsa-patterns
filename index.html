@@ -12,28 +12,30 @@
         <aside class="sidebar">
             <!-- Activity Section -->
             <div class="sidebar-section">
-                <h2 class="sidebar-title">Activity</h2>
-                <button class="timeframe-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    Last 7 days
-                </button>
-                <div class="days-stat">
-                    <div class="days-number" id="daysSpent">02</div>
-                    <div class="days-label">Days spent</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="sidebar-title">Activity</h2>
+                    <button class="timeframe-btn" style="margin-top: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        Last 7 days
+                    </button>
                 </div>
-                <div class="activity-grid">
-                    <div class="activity-day active">Tue</div>
-                    <div class="activity-day active">Wed</div>
-                    <div class="activity-day active">Thu</div>
+                <div class="days-stat" style="display: flex; align-items: baseline; gap: 8px; margin: 16px 0;">
+                    <div class="days-number" id="daysSpent" style="font-size: 32px; font-weight: 700; color: #111827;">03</div>
+                    <div class="days-label" style="font-size: 14px; color: #6b7280;">Days spent</div>
+                </div>
+                <div class="activity-grid" id="activityGrid">
+                    <div class="activity-day">Wed</div>
+                    <div class="activity-day">Thu</div>
                     <div class="activity-day">Fri</div>
                     <div class="activity-day">Sat</div>
                     <div class="activity-day">Sun</div>
                     <div class="activity-day">Mon</div>
+                    <div class="activity-day active">Tue</div>
                 </div>
             </div>
 
