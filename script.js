@@ -972,6 +972,11 @@ async function initApp() {
     // Load data from API if enabled
     if (USE_API) {
         try {
+            // Load problems from API
+            const allProblems = await api.getAllProblems();
+            leetcodeProblems.length = 0;
+            leetcodeProblems.push(...allProblems);
+            
             // Load solved problems from API
             const solved = await api.getSolvedProblems();
             solvedProblems = solved;
