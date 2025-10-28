@@ -30,7 +30,11 @@ async def get_problem(problem_id: int):
         response = supabase.table("problems").select("*").eq("id", problem_id).execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Problem not found")
-        return Problem(**response.data[0])
+        result = response.data[0]
+        # Parse topics from JSON string to list
+        if isinstance(result.get('topics'), str):
+            result['topics'] = json.loads(result['topics'])
+        return Problem(**result)
     except HTTPException:
         raise
     except Exception as e:
@@ -108,7 +112,10 @@ async def get_problems_by_category(category: str):
         # Filter in Python (Supabase JSONB filtering can be complex)
         filtered = []
         for problem in response.data:
-            topics = json.loads(problem.get('topics', '[]')) if isinstance(problem.get('topics'), str) else problem.get('topics', [])
+            # Parse topics if it's a string
+            if isinstance(problem.get('topics'), str):
+                problem['topics'] = json.loads(problem['topics'])
+            topics = problem.get('topics', [])
             if category in topics:
                 filtered.append(Problem(**problem))
         
