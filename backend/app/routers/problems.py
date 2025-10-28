@@ -12,7 +12,13 @@ async def get_all_problems():
     try:
         supabase = get_supabase()
         response = supabase.table("problems").select("*").execute()
-        return [Problem(**problem) for problem in response.data]
+        # Parse topics from JSON string to list
+        problems = []
+        for problem in response.data:
+            if isinstance(problem.get('topics'), str):
+                problem['topics'] = json.loads(problem['topics'])
+            problems.append(Problem(**problem))
+        return problems
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -49,7 +55,11 @@ async def create_problem(problem: ProblemCreate):
             insert_data['subtopic'] = data['subtopic']
         
         response = supabase.table("problems").insert(insert_data).execute()
-        return Problem(**response.data[0])
+        result = response.data[0]
+        # Parse topics from JSON string to list
+        if isinstance(result.get('topics'), str):
+            result['topics'] = json.loads(result['topics'])
+        return Problem(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
