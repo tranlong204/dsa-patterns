@@ -26,9 +26,20 @@ class APIClient {
             ...options
         };
 
+        // Attach Bearer token if available
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+
         try {
             const response = await fetch(url, config);
             if (!response.ok) {
+                if (response.status === 401) {
+                    // Redirect to login
+                    window.location.href = 'login.html';
+                    return;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return await response.json();

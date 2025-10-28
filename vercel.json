@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "name": "dsa-patterns",
+  "public": true,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "styles.css", "use": "@vercel/static" },
+    { "src": "script.js", "use": "@vercel/static" },
+    { "src": "api.js", "use": "@vercel/static" },
+    { "src": "data.js", "use": "@vercel/static" },
+    { "src": "login.html", "use": "@vercel/static" },
+    { "src": "login.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/login", "dest": "/login.html" }
+  ],
+  "ignoreCommand": "echo Skipping build for backend",
+  "github": { "enabled": false }
+}
+
+

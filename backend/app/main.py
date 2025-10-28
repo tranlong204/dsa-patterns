@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import problems, user_progress
+from app.routers import problems, user_progress, auth
 from app.config import settings
 
 app = FastAPI(title="DSA Patterns API", version="1.0.0")
@@ -17,6 +17,7 @@ app.add_middleware(
 # Include routers
 app.include_router(problems.router, prefix="/api/problems", tags=["problems"])
 app.include_router(user_progress.router, prefix="/api/user", tags=["user"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
