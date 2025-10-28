@@ -6,13 +6,22 @@ from app.config import settings
 app = FastAPI(title="DSA Patterns API", version="1.0.0")
 
 # Enable CORS for frontend using configured origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.CORS_ORIGIN_REGEX:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=settings.CORS_ORIGIN_REGEX,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Include routers
 app.include_router(problems.router, prefix="/api/problems", tags=["problems"])
