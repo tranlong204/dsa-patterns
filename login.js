@@ -21,7 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('password', password);
 
         try {
-            const resp = await fetch('http://localhost:8000/api/auth/login', {
+            // Use same API base as the app; API_BASE_URL is defined in api.js
+            const base = (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) ? API_BASE_URL : (localStorage.getItem('API_BASE_URL') || '');
+            const endpoint = (base || '').replace(/\/$/, '') + '/api/auth/login';
+            const resp = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData.toString()
