@@ -97,6 +97,12 @@ class APIClient {
         });
     }
 
+    async deleteProblem(problemId) {
+        return await this.request(`/api/problems/${problemId}`, {
+            method: 'DELETE'
+        });
+    }
+
     // User Progress API
     async getSolvedProblems() {
         return await this.request(`/api/user/${this.userId}/solved`);

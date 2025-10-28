@@ -287,6 +287,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Practice</th>
                         <th>Solution</th>
                         <th>Revision</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -333,6 +334,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Practice</th>
                         <th>Solution</th>
                         <th>Revision</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -461,6 +463,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Practice</th>
                         <th>Solution</th>
                         <th>Revision</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -564,11 +567,12 @@ function createTopicSection(topic, problems) {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>Problem</th>
-                    <th>Difficulty</th>
-                    <th>Practice</th>
-                    <th>Solution</th>
-                    <th>Revision</th>
+                        <th>Problem</th>
+                        <th>Difficulty</th>
+                        <th>Practice</th>
+                        <th>Solution</th>
+                        <th>Revision</th>
+                        <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="problems-${topic}"></tbody>
@@ -625,6 +629,7 @@ function createSubcategory(name, problems) {
                 <th>Practice</th>
                 <th>Solution</th>
                 <th>Revision</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -690,6 +695,9 @@ function createProblemRow(problem) {
                 </svg>
             </span>
         </td>
+        <td>
+            <button class="remove-btn" data-problem-id="${problem.id}" title="Remove problem">🗑️</button>
+        </td>
     `;
     
     // Add checkbox event listener
@@ -699,6 +707,10 @@ function createProblemRow(problem) {
     // Add revision icon event listener
     const revisionIcon = row.querySelector('.revision-icon');
     revisionIcon.addEventListener('click', (e) => toggleRevision(problem.id));
+    
+    // Add remove button event listener
+    const removeBtn = row.querySelector('.remove-btn');
+    removeBtn.addEventListener('click', (e) => handleRemoveProblem(problem.id));
     
     return row;
 }
@@ -1161,4 +1173,19 @@ function showAddProblemModal(subtopic, topics) {
             alert('Failed to add problem. Please try again.');
         }
     };
+}
+
+// Handle remove
+async function handleRemoveProblem(problemId) {
+    if (!confirm('Are you sure you want to remove this problem?')) return;
+    try {
+        await api.deleteProblem(problemId);
+        // Refresh problems and UI
+        const allProblems = await api.getAllProblems();
+        leetcodeProblems = allProblems;
+        renderProblemsByTopic();
+    } catch (err) {
+        console.error('Failed to delete problem:', err);
+        alert('Failed to delete problem.');
+    }
 }
