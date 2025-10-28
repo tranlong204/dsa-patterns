@@ -1165,7 +1165,8 @@ function showAddProblemModal(subtopic, topics) {
             modal.style.display = 'none';
             // Reload problems from API and re-render
             const allProblems = await api.getAllProblems();
-            leetcodeProblems = allProblems;
+            leetcodeProblems.length = 0;
+            leetcodeProblems.push(...allProblems);
             renderProblemsByTopic();
             alert('Problem added successfully!');
         } catch (error) {
@@ -1182,7 +1183,8 @@ async function handleRemoveProblem(problemId) {
         await api.deleteProblem(problemId);
         // Refresh problems and UI
         const allProblems = await api.getAllProblems();
-        leetcodeProblems = allProblems;
+        leetcodeProblems.length = 0;
+        leetcodeProblems.push(...allProblems);
         renderProblemsByTopic();
     } catch (err) {
         console.error('Failed to delete problem:', err);
