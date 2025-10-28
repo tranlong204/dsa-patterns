@@ -1,25 +1,30 @@
-# LeetCode Patterns Tracker
+# DSA Patterns Practice Tracker
 
-A beautiful, interactive website to track your LeetCode problem-solving progress with organized patterns, search, and filtering capabilities.
+A comprehensive tool for tracking your LeetCode problem-solving progress with organized patterns, search, filtering, and backend API integration.
 
 ## Features
 
 - ✅ **Progress Tracking**: Check off problems as you solve them
-- 🔍 **Search**: Find problems by title or number
-- 🏷️ **Filtering**: Filter by difficulty (Easy/Medium/Hard) and topic
-- 💾 **Persistent Storage**: Your progress is saved locally using browser storage
-- 📊 **Progress Bar**: Visual indicator of your completion percentage
-- 🎨 **Beautiful UI**: Modern, responsive design with gradient colors
+- 🔍 **Search & Filter**: Search problems by title, filter by Solved/Unsolved status
+- 🎯 **Difficulty Tracking**: Separate tracking for Easy (413), Medium (652), and Hard (367) problems
+- 📊 **Visual Calendar**: Activity heatmap with intensity levels based on problems solved per day
 - 🔗 **Direct Links**: Click on any problem to open it on LeetCode
+- 💾 **Hybrid Storage**: Supabase backend with localStorage fallback
+- 🚀 **FastAPI Backend**: RESTful API for CRUD operations
+- 🗄️ **Supabase Integration**: Persistent database storage
 
-## Usage
+## Quick Start
 
+### Frontend Only (Local Storage)
 1. Open `index.html` in your web browser
-2. Browse the problems organized by topics
-3. Check the boxes for problems you've solved
-4. Use the search bar to find specific problems
-5. Use the filters to narrow down by difficulty or topic
-6. Your progress is automatically saved locally
+2. Your progress is automatically saved locally
+
+### With Backend API (Supabase)
+1. Set up Supabase and run migrations (see `backend/README.md`)
+2. Configure environment variables in `backend/.env`
+3. Start the backend: `cd backend && uvicorn app.main:app --reload`
+4. Open `index.html` - it will automatically connect to the API
+5. Your progress is saved to Supabase database
 
 ## Topics Covered
 
@@ -40,10 +45,10 @@ A beautiful, interactive website to track your LeetCode problem-solving progress
 
 ## Technologies Used
 
-- HTML5
-- CSS3 (with gradients and modern styling)
-- Vanilla JavaScript
-- Local Storage API for persistence
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Backend**: FastAPI, Python 3
+- **Database**: Supabase (PostgreSQL)
+- **Storage**: Supabase with localStorage fallback
 
 ## Browser Compatibility
 

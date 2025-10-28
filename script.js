@@ -5,8 +5,11 @@ let revisionProblems = JSON.parse(localStorage.getItem('revisionProblems')) || [
 let isRevisionFilterActive = false;
 let currentFilter = null; // 'solved', 'unsolved', or null (show all)
 
+// Flag to use API instead of localStorage
+const USE_API = true; // Set to false to use localStorage fallback
+
 // Track activity when a problem is solved
-function trackActivity(problemId, date = new Date()) {
+async function trackActivity(problemId, date = new Date()) {
     const dateKey = formatDate(date);
     if (!activityDates[dateKey]) {
         activityDates[dateKey] = [];
@@ -14,12 +17,22 @@ function trackActivity(problemId, date = new Date()) {
     if (!activityDates[dateKey].includes(problemId)) {
         activityDates[dateKey].push(problemId);
         localStorage.setItem('activityDates', JSON.stringify(activityDates));
+        
+        // Also save to API
+        if (USE_API) {
+            try {
+                await api.markProblemSolved(problemId);
+            } catch (error) {
+                console.error('Failed to save to API:', error);
+            }
+        }
+        
         renderCalendar();
     }
 }
 
 // Remove activity when a problem is unchecked
-function removeActivity(problemId) {
+async function removeActivity(problemId) {
     // Find and remove this problem from all dates
     for (const dateKey in activityDates) {
         if (activityDates[dateKey].includes(problemId)) {
@@ -31,6 +44,16 @@ function removeActivity(problemId) {
         }
     }
     localStorage.setItem('activityDates', JSON.stringify(activityDates));
+    
+    // Also update API
+    if (USE_API) {
+        try {
+            await api.markProblemUnsolved(problemId);
+        } catch (error) {
+            console.error('Failed to update API:', error);
+        }
+    }
+    
     renderCalendar();
 }
 
@@ -96,7 +119,43 @@ function countByDifficulty(problems) {
 }
 
 // Update sidebar statistics
-function updateSidebarStats() {
+async function updateSidebarStats() {
+    if (USE_API) {
+        try {
+            const stats = await api.getStats();
+            
+            // Update total progress
+            const percentage = stats.total_problems > 0 ? Math.round((stats.solved_problems / stats.total_problems) * 100) : 0;
+            document.getElementById('totalProgress').textContent = percentage + '%';
+            
+            // Update difficulty progress
+            document.getElementById('easyCount').textContent = `${stats.easy_solved}/${stats.easy_total}`;
+            document.getElementById('mediumCount').textContent = `${stats.medium_solved}/${stats.medium_total}`;
+            document.getElementById('hardCount').textContent = `${stats.hard_solved}/${stats.hard_total}`;
+            
+            // Update progress bars
+            const easyPercentage = stats.easy_total > 0 ? (stats.easy_solved / stats.easy_total) * 100 : 0;
+            const mediumPercentage = stats.medium_total > 0 ? (stats.medium_solved / stats.medium_total) * 100 : 0;
+            const hardPercentage = stats.hard_total > 0 ? (stats.hard_solved / stats.hard_total) * 100 : 0;
+            
+            document.getElementById('easyFill').style.width = easyPercentage + '%';
+            document.getElementById('mediumFill').style.width = mediumPercentage + '%';
+            document.getElementById('hardFill').style.width = hardPercentage + '%';
+            
+            // Update solvedProblems array
+            const solved = await api.getSolvedProblems();
+            solvedProblems = solved;
+            localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
+        } catch (error) {
+            console.error('Failed to fetch stats from API, using local storage:', error);
+            updateSidebarStatsLocal();
+        }
+    } else {
+        updateSidebarStatsLocal();
+    }
+}
+
+function updateSidebarStatsLocal() {
     const counts = countByDifficulty(leetcodeProblems);
     const total = leetcodeProblems.length;
     
@@ -708,13 +767,33 @@ function calculateStreaks() {
 }
 
 // Render calendar heatmap
-function renderCalendar() {
+async function renderCalendar() {
     const container = document.getElementById('calendarHeatmap');
     container.innerHTML = '';
     
     const today = new Date();
     const daysToShow = 371; // Show about 1 year + a few extra days
     const weeks = Math.ceil(daysToShow / 7);
+    
+    // Load calendar data from API or localStorage
+    let calendarDataMap = {};
+    
+    if (USE_API) {
+        try {
+            const apiCalendarData = await api.getCalendarData();
+            for (const item of apiCalendarData) {
+                calendarDataMap[item.date] = item.problem_count;
+            }
+        } catch (error) {
+            console.error('Failed to fetch calendar data from API, using local storage:', error);
+        }
+    }
+    
+    // Merge with localStorage data (fallback)
+    for (const dateKey in activityDates) {
+        const count = activityDates[dateKey].length;
+        calendarDataMap[dateKey] = (calendarDataMap[dateKey] || 0) + count;
+    }
     
     // Create calendar data
     const heatmapData = [];
@@ -723,12 +802,13 @@ function renderCalendar() {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateKey = formatDate(date);
-        const hasActivity = activityDates[dateKey] && activityDates[dateKey].length > 0;
+        const problemCount = calendarDataMap[dateKey] || 0;
+        const hasActivity = problemCount > 0;
         
         heatmapData.push({
             date: dateKey,
             hasActivity,
-            problemCount: activityDates[dateKey] ? activityDates[dateKey].length : 0
+            problemCount
         });
     }
     
@@ -785,21 +865,21 @@ function renderCalendar() {
 }
 
 // Handle checkbox changes
-function handleCheckboxChange(event, problemId) {
+async function handleCheckboxChange(event, problemId) {
     const isChecked = event.target.checked;
     
     if (isChecked) {
         if (!solvedProblems.includes(problemId)) {
             solvedProblems.push(problemId);
-            trackActivity(problemId); // Track activity when solved
+            await trackActivity(problemId); // Track activity when solved
         }
     } else {
         solvedProblems = solvedProblems.filter(id => id !== problemId);
-        removeActivity(problemId); // Remove activity tracking when unchecked
+        await removeActivity(problemId); // Remove activity tracking when unchecked
     }
     
     localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
-    updateSidebarStats();
+    await updateSidebarStats();
 }
 
 // Initialize categories as collapsed
@@ -834,10 +914,34 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 // Initialize
-cleanupActivityTracking(); // Clean up any orphaned activity tracking
-renderCalendar();
-renderProblemsByTopic();
-initCategories();
+async function initApp() {
+    cleanupActivityTracking(); // Clean up any orphaned activity tracking
+    
+    // Load data from API if enabled
+    if (USE_API) {
+        try {
+            // Load solved problems from API
+            const solved = await api.getSolvedProblems();
+            solvedProblems = solved;
+            localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
+            
+            // Load progress stats
+            await updateSidebarStats();
+        } catch (error) {
+            console.error('API not available, using local storage:', error);
+            updateSidebarStatsLocal();
+        }
+    } else {
+        updateSidebarStatsLocal();
+    }
+    
+    await renderCalendar();
+    renderProblemsByTopic();
+    initCategories();
+}
+
+// Start the app
+initApp();
 
 // Expand/Collapse functionality
 document.getElementById('expandAllBtn').addEventListener('click', () => {
