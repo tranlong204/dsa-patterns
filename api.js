@@ -49,8 +49,7 @@ class APIClient {
         const config = {
             method: options.method || 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
+                ...(options.headers || {})
             },
             ...options
         };
@@ -61,9 +60,12 @@ class APIClient {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
 
-        // If body is provided and not already in right format
-        if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
-            config.body = JSON.stringify(config.body);
+        // Only set JSON content-type when sending a JSON body
+        if (config.body !== undefined) {
+            if (typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
+                config.body = JSON.stringify(config.body);
+                config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+            }
         }
 
         try {
