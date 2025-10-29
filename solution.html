@@ -114,7 +114,6 @@
         if (!token) { window.location.href = 'login.html'; }
       })();
     </script>
-    <script src="api.js"></script>
 </head>
 <body style="background: #f5f5f5; min-height: 100vh;">
     <div class="editor-container">
@@ -139,8 +138,9 @@
     </div>
 
     <script>
-        // Get API base URL - read from localStorage (set by api.js logic)
-        let API_BASE_URL = (function() {
+        // Avoid redeclaring API_BASE_URL that might exist from api.js
+        // Use immediate function execution to get base URL
+        var getApiBaseUrl = (function() {
             try {
                 const params = new URLSearchParams(window.location.search);
                 const apiParam = params.get('api');
@@ -150,7 +150,7 @@
             } catch (e) { /* noop */ }
             const stored = localStorage.getItem('API_BASE_URL');
             return stored && stored.trim() !== '' ? stored : 'https://dsa-patterns-backend.onrender.com';
-        })();
+        });
 
         let problemId = null;
         
@@ -166,7 +166,7 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/problems/${problemId}`, {
+                const response = await fetch(`${getApiBaseUrl()}/api/problems/${problemId}`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                     }
@@ -206,7 +206,7 @@
             saveBtn.textContent = 'Saving...';
             
             try {
-                const response = await fetch(`${API_BASE_URL}/api/problems/${problemId}`, {
+                const response = await fetch(`${getApiBaseUrl()}/api/problems/${problemId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
