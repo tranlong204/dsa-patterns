@@ -16,7 +16,7 @@
   "routes": [
     { "src": "/", "dest": "/index.html" },
     { "src": "/company", "dest": "/company.html" },
-    { "src": "/favicon.svg", "dest": "/favicon.svg" }
+    { "src": "/favicon.svg", "dest": "/favicon.svg" },
     { "src": "/login", "dest": "/login.html" },
     { "src": "/solution", "dest": "/solution.html" }
   ],
