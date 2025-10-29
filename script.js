@@ -124,13 +124,16 @@ function countByDifficulty(problems) {
 async function updateSidebarStats() {
     if (USE_API) {
         try {
+            console.log('Fetching stats from API...');
             const stats = await api.getStats();
+            console.log('Stats received:', stats);
             
             // Update total progress
             const percentage = stats.total_problems > 0 ? Math.round((stats.solved_problems / stats.total_problems) * 100) : 0;
             document.getElementById('totalProgress').textContent = percentage + '%';
             
             // Update difficulty progress
+            console.log(`Updating Easy: ${stats.easy_solved}/${stats.easy_total}`);
             document.getElementById('easyCount').textContent = `${stats.easy_solved}/${stats.easy_total}`;
             document.getElementById('mediumCount').textContent = `${stats.medium_solved}/${stats.medium_total}`;
             document.getElementById('hardCount').textContent = `${stats.hard_solved}/${stats.hard_total}`;
@@ -978,25 +981,13 @@ async function handleCheckboxChange(event, problemId) {
             solvedProblems.push(problemId);
             localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
             await trackActivity(problemId); // Track activity when solved
-            
-            // Wait a bit for backend to update before refreshing stats
-            if (USE_API) {
-                setTimeout(() => updateSidebarStats(), 500);
-            } else {
-                await updateSidebarStats();
-            }
+            await updateSidebarStats();
         }
     } else {
         solvedProblems = solvedProblems.filter(id => id !== problemId);
         localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
         await removeActivity(problemId); // Remove activity tracking when unchecked
-        
-        // Wait a bit for backend to update before refreshing stats
-        if (USE_API) {
-            setTimeout(() => updateSidebarStats(), 500);
-        } else {
-            await updateSidebarStats();
-        }
+        await updateSidebarStats();
     }
 }
 
