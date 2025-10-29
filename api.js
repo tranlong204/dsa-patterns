@@ -164,6 +164,10 @@ class APIClient {
         return await this.request(`/api/company-tags/problem/${problemId}`, { method: 'PUT', body: tagIds });
     }
 
+    async getAllProblemCompanyTags() {
+        return await this.request('/api/company-tags/all-problem-tags');
+    }
+
     // Revision API
     async getRevisionList() {
         return await this.request(`/api/user/${this.userId}/revision`);

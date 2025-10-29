@@ -79,4 +79,19 @@ async def set_problem_tags(problem_id: int, tag_ids: List[int]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/all-problem-tags")
+async def get_all_problem_tags():
+    """Return mapping of problem_id -> list[tag_id]"""
+    try:
+        supabase = get_supabase()
+        resp = supabase.table("problem_company_tags").select("problem_id, tag_id").execute()
+        mapping = {}
+        for row in resp.data:
+            pid = row["problem_id"]
+            tid = row["tag_id"]
+            mapping.setdefault(pid, []).append(tid)
+        return mapping
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 

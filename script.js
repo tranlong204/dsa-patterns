@@ -673,6 +673,7 @@ function createSubcategory(name, problems) {
 
 // Create a problem table row
 let companyTagsCache = null; // id -> name cache
+let problemToTagIds = {}; // problem_id -> [tag_id]
 
 async function ensureCompanyTagsCache() {
     if (!USE_API) return {};
@@ -692,7 +693,7 @@ async function populateCompanyTags(problemId) {
     if (!USE_API) return;
     try {
         await ensureCompanyTagsCache();
-        const tagIds = await api.getProblemCompanyTags(problemId);
+        const tagIds = problemToTagIds[problemId] || [];
         const container = document.querySelector(`.company-tags[data-problem-id="${problemId}"]`);
         if (!container) return;
         container.innerHTML = '';
@@ -1107,6 +1108,10 @@ async function initApp() {
     
     await renderCalendar();
     updateActivityGrid();
+    // Preload company tags mapping once (avoid per-row requests)
+    if (USE_API) {
+        try { problemToTagIds = await api.getAllProblemCompanyTags(); } catch (e) { problemToTagIds = {}; }
+    }
     renderProblemsByTopic();
     initCategories();
 }
@@ -1364,6 +1369,7 @@ async function openTagsModal(problemId) {
             modal.style.display = 'none';
             // Refresh badges for this row
             await ensureCompanyTagsCache();
+            problemToTagIds[problemId] = chosen;
             await populateCompanyTags(problemId);
         } catch (e) {
             console.error('Failed to save tags', e);
