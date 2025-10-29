@@ -101,7 +101,10 @@
             }
         });
 
-        loadTags();
+        // Ensure api.js is initialized; run after DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTags();
+        });
     </script>
 </body>
 </html>
