@@ -115,13 +115,28 @@ async def get_user_stats(user_id: str, current_user: str = Depends(get_current_u
     try:
         supabase = get_supabase()
         
-        # Get all problems
-        problems_response = supabase.table("problems").select("*").execute()
-        all_problems = problems_response.data
+        # Get all problems with pagination
+        all_problems = []
+        offset = 0
+        page_size = 1000
+        while True:
+            problems_response = supabase.table("problems").select("*").range(offset, offset + page_size - 1).execute()
+            all_problems.extend(problems_response.data)
+            if len(problems_response.data) < page_size:
+                break
+            offset += page_size
         
         # Get solved problems for user
-        solved_response = supabase.table("user_progress").select("problem_id").eq("user_id", current_user).eq("solved", True).execute()
-        solved_ids = {row['problem_id'] for row in solved_response.data}
+        solved_ids_set = set()
+        offset = 0
+        while True:
+            solved_response = supabase.table("user_progress").select("problem_id").eq("user_id", current_user).eq("solved", True).range(offset, offset + page_size - 1).execute()
+            for row in solved_response.data:
+                solved_ids_set.add(row['problem_id'])
+            if len(solved_response.data) < page_size:
+                break
+            offset += page_size
+        solved_ids = solved_ids_set
         
         # Calculate stats
         total = len(all_problems)
