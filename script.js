@@ -287,6 +287,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Problem</th>
                         <th>Difficulty</th>
                         <th>Practice</th>
+                        <th>Company</th>
                         <th>Solution</th>
                         <th>Revision</th>
                         <th>Actions</th>
@@ -334,6 +335,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Problem</th>
                         <th>Difficulty</th>
                         <th>Practice</th>
+                        <th>Company</th>
                         <th>Solution</th>
                         <th>Revision</th>
                         <th>Actions</th>
@@ -463,6 +465,7 @@ function createTopicSectionWithSubcategories(categoryName, problems, subcategory
                         <th>Problem</th>
                         <th>Difficulty</th>
                         <th>Practice</th>
+                        <th>Company</th>
                         <th>Solution</th>
                         <th>Revision</th>
                         <th>Actions</th>
@@ -572,6 +575,7 @@ function createTopicSection(topic, problems) {
                         <th>Problem</th>
                         <th>Difficulty</th>
                         <th>Practice</th>
+                        <th>Company</th>
                         <th>Solution</th>
                         <th>Revision</th>
                         <th>Actions</th>
@@ -629,6 +633,7 @@ function createSubcategory(name, problems) {
                 <th>Problem</th>
                 <th>Difficulty</th>
                 <th>Practice</th>
+                <th>Company</th>
                 <th>Solution</th>
                 <th>Revision</th>
                 <th>Actions</th>
@@ -688,6 +693,9 @@ function createProblemRow(problem) {
             <a href="${problem.link}" target="_blank" class="practice-link">🔗</a>
         </td>
         <td>
+            <button class="btn-tags" data-problem-id="${problem.id}" title="Manage company tags">🏷️ Tags</button>
+        </td>
+        <td>
             <a href="solution.html?id=${problem.id}" class="solution-link" target="_blank">
                 ${problem.solution_text ? '📝 Edit Solution' : '📝 Coming Soon'}
             </a>
@@ -715,6 +723,12 @@ function createProblemRow(problem) {
     // Add remove button event listener
     const removeBtn = row.querySelector('.remove-btn');
     removeBtn.addEventListener('click', (e) => handleRemoveProblem(problem.id));
+
+    // Add tags button
+    const tagsBtn = row.querySelector('.btn-tags');
+    if (tagsBtn) {
+        tagsBtn.addEventListener('click', () => openTagsModal(problem.id));
+    }
     
     return row;
 }
@@ -1250,4 +1264,65 @@ async function handleRemoveProblem(problemId) {
         console.error('Failed to delete problem:', err);
         alert('Failed to delete problem.');
     }
+}
+
+// Company tags modal
+async function openTagsModal(problemId) {
+    // Fetch all tags and current selections
+    let allTags = [];
+    let selected = [];
+    try {
+        allTags = await api.listCompanyTags();
+        selected = await api.getProblemCompanyTags(problemId);
+    } catch (e) {
+        console.error('Failed to load company tags', e);
+        alert('Failed to load company tags');
+        return;
+    }
+
+    // Build modal
+    let modal = document.getElementById('tagsModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'tagsModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+              <span class="close-modal">&times;</span>
+              <h2>Assign Company Tags</h2>
+              <div id="tagsList" style="max-height:260px;overflow:auto;margin:12px 0;"></div>
+              <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <a class="submit-btn" id="manageTagsLink" href="company.html" target="_blank">Manage Tags</a>
+                <button class="submit-btn" id="saveTagsBtn">Save</button>
+              </div>
+            </div>`;
+        document.body.appendChild(modal);
+        modal.querySelector('.close-modal').addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+    }
+
+    const list = modal.querySelector('#tagsList');
+    list.innerHTML = '';
+    allTags.forEach(tag => {
+        const id = `tag_${tag.id}`;
+        const div = document.createElement('div');
+        div.innerHTML = `<label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" value="${tag.id}" ${selected.includes(tag.id) ? 'checked' : ''}/>
+            ${tag.name}
+        </label>`;
+        list.appendChild(div);
+    });
+
+    modal.style.display = 'block';
+
+    modal.querySelector('#saveTagsBtn').onclick = async () => {
+        const chosen = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(i => parseInt(i.value, 10));
+        try {
+            await api.setProblemCompanyTags(problemId, chosen);
+            modal.style.display = 'none';
+        } catch (e) {
+            console.error('Failed to save tags', e);
+            alert('Failed to save tags');
+        }
+    };
 }

@@ -4,6 +4,7 @@
   "public": true,
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
+    { "src": "company.html", "use": "@vercel/static" },
     { "src": "styles.css", "use": "@vercel/static" },
     { "src": "script.js", "use": "@vercel/static" },
     { "src": "api.js", "use": "@vercel/static" },
@@ -14,6 +15,7 @@
   ],
   "routes": [
     { "src": "/", "dest": "/index.html" },
+    { "src": "/company", "dest": "/company.html" },
     { "src": "/login", "dest": "/login.html" },
     { "src": "/solution", "dest": "/solution.html" }
   ],

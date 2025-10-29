@@ -648,6 +648,14 @@ body {
     text-decoration: underline;
 }
 
+.btn-tags {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+}
+
 .revision-icon {
     display: inline-flex;
     align-items: center;

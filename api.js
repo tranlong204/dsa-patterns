@@ -137,6 +137,31 @@ class APIClient {
         return await this.request(`/api/user/${this.userId}/calendar`);
     }
 
+    // Company Tags API
+    async listCompanyTags() {
+        return await this.request('/api/company-tags/');
+    }
+
+    async createCompanyTag(name) {
+        return await this.request('/api/company-tags/', { method: 'POST', body: { name } });
+    }
+
+    async updateCompanyTag(tagId, name) {
+        return await this.request(`/api/company-tags/${tagId}`, { method: 'PUT', body: { name } });
+    }
+
+    async deleteCompanyTag(tagId) {
+        return await this.request(`/api/company-tags/${tagId}`, { method: 'DELETE' });
+    }
+
+    async getProblemCompanyTags(problemId) {
+        return await this.request(`/api/company-tags/problem/${problemId}`);
+    }
+
+    async setProblemCompanyTags(problemId, tagIds) {
+        return await this.request(`/api/company-tags/problem/${problemId}`, { method: 'PUT', body: tagIds });
+    }
+
     // Revision API
     async getRevisionList() {
         return await this.request(`/api/user/${this.userId}/revision`);

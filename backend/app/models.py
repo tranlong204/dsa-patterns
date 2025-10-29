@@ -50,3 +50,14 @@ class ProblemUpdate(BaseModel):
     subtopic: Optional[str] = None
     solution_text: Optional[str] = None
 
+# Company tags
+class CompanyTag(BaseModel):
+    id: int
+    name: str
+
+class CompanyTagCreate(BaseModel):
+    name: str
+
+class CompanyTagUpdate(BaseModel):
+    name: Optional[str] = None
+
