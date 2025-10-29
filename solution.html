@@ -194,10 +194,16 @@
         }
         
         // Save solution
-        document.getElementById('saveBtn').addEventListener('click', async () => {
+        document.getElementById('saveBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
             if (!problemId) return;
             
             const markdown = document.getElementById('markdownEditor').value;
+            
+            // Disable save button during save
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
             
             try {
                 const response = await fetch(`${API_BASE_URL}/api/problems/${problemId}`, {
@@ -209,15 +215,23 @@
                     body: JSON.stringify({ solution_text: markdown })
                 });
                 
+                const responseData = await response.json();
+                
                 if (response.ok) {
                     alert('Solution saved successfully!');
-                    window.location.href = 'index.html';
+                    // Small delay to ensure save completes before navigation
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 100);
                 } else {
-                    throw new Error('Failed to save solution');
+                    const errorDetail = responseData.detail || 'Failed to save solution';
+                    throw new Error(errorDetail);
                 }
             } catch (error) {
                 console.error('Failed to save solution:', error);
-                alert('Failed to save solution. Please try again.');
+                alert('Failed to save solution: ' + error.message);
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
             }
         });
         
