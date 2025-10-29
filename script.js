@@ -201,6 +201,14 @@ function renderProblemsByTopic(problems = leetcodeProblems) {
     if (isRevisionFilterActive) {
         problemsToShow = problems.filter(p => revisionProblems.includes(p.id));
     }
+    // Apply company tag filter if any selected (AND logic)
+    if (USE_API && selectedCompanyTagIds.size > 0) {
+        const required = Array.from(selectedCompanyTagIds);
+        problemsToShow = problemsToShow.filter(p => {
+            const tagIds = problemToTagIds[p.id] || [];
+            return required.every(tid => tagIds.includes(tid));
+        });
+    }
     
     // Apply solved/unsolved filter if active
     if (currentFilter === 'solved') {
@@ -246,6 +254,31 @@ function renderProblemsByTopic(problems = leetcodeProblems) {
     });
     
     updateSidebarStats();
+}
+
+// Render company tag filter chips
+async function renderCompanyTagFilter() {
+    const container = document.getElementById('companyFilter');
+    if (!container) return;
+    if (!USE_API) { container.innerHTML = ''; return; }
+
+    await ensureCompanyTagsCache();
+    container.innerHTML = '';
+    Object.keys(companyTagsCache || {})
+        .sort((a,b) => companyTagsCache[a].localeCompare(companyTagsCache[b]))
+        .forEach(id => {
+            const tid = parseInt(id, 10);
+            const chip = document.createElement('button');
+            chip.className = 'chip' + (selectedCompanyTagIds.has(tid) ? ' active' : '');
+            chip.textContent = companyTagsCache[id];
+            chip.addEventListener('click', () => {
+                if (selectedCompanyTagIds.has(tid)) selectedCompanyTagIds.delete(tid);
+                else selectedCompanyTagIds.add(tid);
+                renderCompanyTagFilter();
+                renderProblemsByTopic();
+            });
+            container.appendChild(chip);
+        });
 }
 
 // Create topic section with subcategories
@@ -675,6 +708,7 @@ function createSubcategory(name, problems) {
 let companyTagsCache = null; // id -> name cache
 let companyTagsCachePromise = null; // in-flight request
 let problemToTagIds = {}; // problem_id -> [tag_id]
+let selectedCompanyTagIds = new Set();
 
 async function ensureCompanyTagsCache() {
     if (!USE_API) return {};
@@ -1125,6 +1159,7 @@ async function initApp() {
             problemToTagIds = {};
         }
     }
+    await renderCompanyTagFilter();
     renderProblemsByTopic();
     initCategories();
 }

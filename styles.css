@@ -668,6 +668,22 @@ body {
     font-weight: 600;
 }
 
+.company-filter { display:flex; flex-wrap: wrap; gap: 8px; }
+.company-filter .chip {
+    padding: 6px 10px;
+    border-radius: 9999px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    font-weight: 600;
+    cursor: pointer;
+}
+.company-filter .chip.active {
+    background: #e0e7ff;
+    color: #4f46e5;
+    border-color: #c7d2fe;
+}
+
 .revision-icon {
     display: inline-flex;
     align-items: center;
