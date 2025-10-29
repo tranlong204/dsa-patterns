@@ -124,16 +124,13 @@ function countByDifficulty(problems) {
 async function updateSidebarStats() {
     if (USE_API) {
         try {
-            console.log('Fetching stats from API...');
             const stats = await api.getStats();
-            console.log('Stats received:', stats);
             
             // Update total progress
             const percentage = stats.total_problems > 0 ? Math.round((stats.solved_problems / stats.total_problems) * 100) : 0;
             document.getElementById('totalProgress').textContent = percentage + '%';
             
             // Update difficulty progress
-            console.log(`Updating Easy: ${stats.easy_solved}/${stats.easy_total}`);
             document.getElementById('easyCount').textContent = `${stats.easy_solved}/${stats.easy_total}`;
             document.getElementById('mediumCount').textContent = `${stats.medium_solved}/${stats.medium_total}`;
             document.getElementById('hardCount').textContent = `${stats.hard_solved}/${stats.hard_total}`;
