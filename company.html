@@ -6,6 +6,13 @@
     <title>Company Tags</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      // Redirect to login if no JWT
+      (function(){
+        var token = localStorage.getItem('access_token');
+        if (!token) { window.location.href = 'login.html'; }
+      })();
+    </script>
     <script defer src="api.js"></script>
     <style>
         .tag-page { max-width: 800px; margin: 32px auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
@@ -38,21 +45,37 @@
         async function loadTags() {
             const list = document.getElementById('tagList');
             list.innerHTML = '';
-            const tags = await api.listCompanyTags();
-            tags.forEach(tag => {
-                const row = document.createElement('div');
-                row.className = 'tag-row';
-                row.innerHTML = `
-                    <div>
-                        <input class="input" value="${tag.name}" data-tag-id="${tag.id}"/>
-                    </div>
-                    <div class="tag-actions">
-                        <button class="btn btn-primary" data-action="save" data-tag-id="${tag.id}">Save</button>
-                        <button class="btn" data-action="delete" data-tag-id="${tag.id}">Delete</button>
-                    </div>
-                `;
-                list.appendChild(row);
-            });
+            try {
+                const tags = await api.listCompanyTags();
+                if (!tags || tags.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'muted';
+                    empty.style.padding = '12px 0';
+                    empty.textContent = 'No tags yet. Add your first company tag above.';
+                    list.appendChild(empty);
+                    return;
+                }
+                tags.forEach(tag => {
+                    const row = document.createElement('div');
+                    row.className = 'tag-row';
+                    row.innerHTML = `
+                        <div>
+                            <input class="input" value="${tag.name}" data-tag-id="${tag.id}"/>
+                        </div>
+                        <div class="tag-actions">
+                            <button class="btn btn-primary" data-action="save" data-tag-id="${tag.id}">Save</button>
+                            <button class="btn" data-action="delete" data-tag-id="${tag.id}">Delete</button>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            } catch (e) {
+                const err = document.createElement('div');
+                err.className = 'muted';
+                err.style.padding = '12px 0';
+                err.textContent = 'Failed to load company tags.';
+                list.appendChild(err);
+            }
         }
 
         document.getElementById('addTagBtn').addEventListener('click', async () => {
