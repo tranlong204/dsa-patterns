@@ -976,14 +976,15 @@ async function handleCheckboxChange(event, problemId) {
     if (isChecked) {
         if (!solvedProblems.includes(problemId)) {
             solvedProblems.push(problemId);
+            localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
             await trackActivity(problemId); // Track activity when solved
         }
     } else {
         solvedProblems = solvedProblems.filter(id => id !== problemId);
+        localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
         await removeActivity(problemId); // Remove activity tracking when unchecked
     }
     
-    localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
     await updateSidebarStats();
 }
 
