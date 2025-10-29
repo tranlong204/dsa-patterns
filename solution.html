@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Solution</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .editor-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .editor-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        .editor-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .editor-panel {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .editor-panel-header {
+            background: #f9fafb;
+            padding: 12px 16px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .editor-textarea {
+            width: 100%;
+            min-height: 500px;
+            border: none;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+        }
+        .preview-panel {
+            background: white;
+            padding: 16px;
+            min-height: 500px;
+            overflow-y: auto;
+        }
+        .preview-panel code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+        .preview-panel pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .preview-panel pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+    </style>
+    <script>
+      // Redirect to login if no token
+      (function(){
+        var token = localStorage.getItem('access_token');
+        if (!token) { window.location.href = 'login.html'; }
+      })();
+    </script>
+    <script src="api.js"></script>
+</head>
+<body style="background: #f5f5f5; min-height: 100vh;">
+    <div class="editor-container">
+        <div class="editor-header">
+            <div class="editor-title" id="problemTitle">Edit Solution</div>
+            <div class="editor-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">Back</button>
+                <button class="btn btn-primary" id="saveBtn">Save</button>
+            </div>
+        </div>
+        
+        <div class="editor-layout">
+            <div class="editor-panel">
+                <div class="editor-panel-header">Markdown Editor</div>
+                <textarea class="editor-textarea" id="markdownEditor" placeholder="Write your solution in Markdown here..."></textarea>
+            </div>
+            <div class="editor-panel">
+                <div class="editor-panel-header">Preview</div>
+                <div class="preview-panel" id="markdownPreview"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = (function() {
+            const stored = localStorage.getItem('API_BASE_URL');
+            return stored && stored.trim() !== '' ? stored : 'https://dsa-patterns-backend.onrender.com';
+        })();
+
+        let problemId = null;
+        
+        // Load problem ID from URL
+        const params = new URLSearchParams(window.location.search);
+        problemId = params.get('id');
+        
+        // Load existing solution
+        async function loadSolution() {
+            if (!problemId) {
+                console.error('No problem ID provided');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/problems/${problemId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                if (response.ok) {
+                    const problem = await response.json();
+                    document.getElementById('problemTitle').textContent = `Edit Solution: ${problem.title}`;
+                    if (problem.solution_text) {
+                        document.getElementById('markdownEditor').value = problem.solution_text;
+                    }
+                    updatePreview();
+                }
+            } catch (error) {
+                console.error('Failed to load problem:', error);
+            }
+        }
+        
+        // Update preview on input
+        document.getElementById('markdownEditor').addEventListener('input', updatePreview);
+        
+        function updatePreview() {
+            const markdown = document.getElementById('markdownEditor').value;
+            const html = marked.parse(markdown);
+            document.getElementById('markdownPreview').innerHTML = html;
+        }
+        
+        // Save solution
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            if (!problemId) return;
+            
+            const markdown = document.getElementById('markdownEditor').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/problems/${problemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: JSON.stringify({ solution_text: markdown })
+                });
+                
+                if (response.ok) {
+                    alert('Solution saved successfully!');
+                    window.location.href = 'index.html';
+                } else {
+                    throw new Error('Failed to save solution');
+                }
+            } catch (error) {
+                console.error('Failed to save solution:', error);
+                alert('Failed to save solution. Please try again.');
+            }
+        });
+        
+        // Initial load
+        loadSolution();
+    </script>
+</body>
+</html>
+

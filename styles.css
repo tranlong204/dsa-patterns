@@ -636,6 +636,18 @@ body {
     color: #7c3aed;
 }
 
+.solution-link {
+    cursor: pointer;
+    color: #4f46e5;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.solution-link:hover {
+    color: #4338ca;
+    text-decoration: underline;
+}
+
 .revision-icon {
     display: inline-flex;
     align-items: center;

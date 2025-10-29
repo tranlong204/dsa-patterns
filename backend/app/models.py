@@ -10,6 +10,7 @@ class Problem(BaseModel):
     topics: List[str]
     link: str
     subtopic: Optional[str] = None
+    solution_text: Optional[str] = None
 
 class UserProgress(BaseModel):
     problem_id: int
@@ -39,6 +40,7 @@ class ProblemCreate(BaseModel):
     topics: List[str]
     link: str
     subtopic: Optional[str] = None
+    solution_text: Optional[str] = None
 
 class ProblemUpdate(BaseModel):
     title: Optional[str] = None
@@ -46,4 +48,5 @@ class ProblemUpdate(BaseModel):
     topics: Optional[List[str]] = None
     link: Optional[str] = None
     subtopic: Optional[str] = None
+    solution_text: Optional[str] = None
 

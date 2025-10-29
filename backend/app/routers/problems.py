@@ -69,6 +69,8 @@ async def create_problem(problem: ProblemCreate):
         }
         if 'subtopic' in data and data['subtopic']:
             insert_data['subtopic'] = data['subtopic']
+        if 'solution_text' in data and data['solution_text']:
+            insert_data['solution_text'] = data['solution_text']
         
         response = supabase.table("problems").insert(insert_data).execute()
         result = response.data[0]

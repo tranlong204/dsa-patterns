@@ -688,7 +688,9 @@ function createProblemRow(problem) {
             <a href="${problem.link}" target="_blank" class="practice-link">🔗</a>
         </td>
         <td>
-            <span class="solution-text">Coming Soon</span>
+            <a href="solution.html?id=${problem.id}" class="solution-link" target="_blank">
+                ${problem.solution_text ? '📝 Edit Solution' : '📝 Coming Soon'}
+            </a>
         </td>
         <td>
             <span class="revision-icon ${isInRevision ? 'in-revision' : ''}" data-problem-id="${problem.id}" style="cursor: pointer;">

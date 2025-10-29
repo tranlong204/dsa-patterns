@@ -9,11 +9,13 @@
     { "src": "api.js", "use": "@vercel/static" },
     { "src": "data.js", "use": "@vercel/static" },
     { "src": "login.html", "use": "@vercel/static" },
-    { "src": "login.js", "use": "@vercel/static" }
+    { "src": "login.js", "use": "@vercel/static" },
+    { "src": "solution.html", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/", "dest": "/index.html" },
-    { "src": "/login", "dest": "/login.html" }
+    { "src": "/login", "dest": "/login.html" },
+    { "src": "/solution", "dest": "/solution.html" }
   ],
   "ignoreCommand": "echo Skipping build for backend",
   "github": { "enabled": false }
