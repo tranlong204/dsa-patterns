@@ -978,14 +978,26 @@ async function handleCheckboxChange(event, problemId) {
             solvedProblems.push(problemId);
             localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
             await trackActivity(problemId); // Track activity when solved
+            
+            // Wait a bit for backend to update before refreshing stats
+            if (USE_API) {
+                setTimeout(() => updateSidebarStats(), 500);
+            } else {
+                await updateSidebarStats();
+            }
         }
     } else {
         solvedProblems = solvedProblems.filter(id => id !== problemId);
         localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
         await removeActivity(problemId); // Remove activity tracking when unchecked
+        
+        // Wait a bit for backend to update before refreshing stats
+        if (USE_API) {
+            setTimeout(() => updateSidebarStats(), 500);
+        } else {
+            await updateSidebarStats();
+        }
     }
-    
-    await updateSidebarStats();
 }
 
 // Initialize categories as collapsed
