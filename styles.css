@@ -656,6 +656,18 @@ body {
     cursor: pointer;
 }
 
+.company-cell { display: flex; align-items: center; gap: 8px; }
+.company-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-badge {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .revision-icon {
     display: inline-flex;
     align-items: center;

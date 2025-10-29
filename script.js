@@ -672,6 +672,42 @@ function createSubcategory(name, problems) {
 }
 
 // Create a problem table row
+let companyTagsCache = null; // id -> name cache
+
+async function ensureCompanyTagsCache() {
+    if (!USE_API) return {};
+    if (companyTagsCache) return companyTagsCache;
+    try {
+        const tags = await api.listCompanyTags();
+        companyTagsCache = {};
+        tags.forEach(t => companyTagsCache[t.id] = t.name);
+        return companyTagsCache;
+    } catch (e) {
+        console.error('Failed to load company tags list', e);
+        return {};
+    }
+}
+
+async function populateCompanyTags(problemId) {
+    if (!USE_API) return;
+    try {
+        await ensureCompanyTagsCache();
+        const tagIds = await api.getProblemCompanyTags(problemId);
+        const container = document.querySelector(`.company-tags[data-problem-id="${problemId}"]`);
+        if (!container) return;
+        container.innerHTML = '';
+        tagIds.forEach(id => {
+            const name = companyTagsCache && companyTagsCache[id] ? companyTagsCache[id] : `#${id}`;
+            const el = document.createElement('span');
+            el.className = 'tag-badge';
+            el.textContent = name;
+            container.appendChild(el);
+        });
+    } catch (e) {
+        console.error('Failed to populate company tags', e);
+    }
+}
+
 function createProblemRow(problem) {
     const row = document.createElement('tr');
     row.className = 'problem-row';
@@ -693,7 +729,10 @@ function createProblemRow(problem) {
             <a href="${problem.link}" target="_blank" class="practice-link">🔗</a>
         </td>
         <td>
-            <button class="btn-tags" data-problem-id="${problem.id}" title="Manage company tags">🏷️ Tags</button>
+            <div class="company-cell">
+                <div class="company-tags" data-problem-id="${problem.id}"></div>
+                <button class="btn-tags" data-problem-id="${problem.id}" title="Manage company tags">🏷️ Tags</button>
+            </div>
         </td>
         <td>
             <a href="solution.html?id=${problem.id}" class="solution-link" target="_blank">
@@ -729,6 +768,9 @@ function createProblemRow(problem) {
     if (tagsBtn) {
         tagsBtn.addEventListener('click', () => openTagsModal(problem.id));
     }
+
+    // Populate company tags asynchronously
+    populateCompanyTags(problem.id);
     
     return row;
 }
@@ -1320,6 +1362,9 @@ async function openTagsModal(problemId) {
         try {
             await api.setProblemCompanyTags(problemId, chosen);
             modal.style.display = 'none';
+            // Refresh badges for this row
+            await ensureCompanyTagsCache();
+            await populateCompanyTags(problemId);
         } catch (e) {
             console.error('Failed to save tags', e);
             alert('Failed to save tags');
