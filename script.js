@@ -673,20 +673,28 @@ function createSubcategory(name, problems) {
 
 // Create a problem table row
 let companyTagsCache = null; // id -> name cache
+let companyTagsCachePromise = null; // in-flight request
 let problemToTagIds = {}; // problem_id -> [tag_id]
 
 async function ensureCompanyTagsCache() {
     if (!USE_API) return {};
     if (companyTagsCache) return companyTagsCache;
-    try {
-        const tags = await api.listCompanyTags();
-        companyTagsCache = {};
-        tags.forEach(t => companyTagsCache[t.id] = t.name);
-        return companyTagsCache;
-    } catch (e) {
-        console.error('Failed to load company tags list', e);
-        return {};
+    if (!companyTagsCachePromise) {
+        companyTagsCachePromise = (async () => {
+            try {
+                const tags = await api.listCompanyTags();
+                const map = {};
+                tags.forEach(t => { map[t.id] = t.name; });
+                companyTagsCache = map;
+                return companyTagsCache;
+            } catch (e) {
+                console.error('Failed to load company tags list', e);
+                companyTagsCachePromise = null; // allow retries
+                return {};
+            }
+        })();
     }
+    return companyTagsCachePromise;
 }
 
 async function populateCompanyTags(problemId) {
@@ -1110,7 +1118,12 @@ async function initApp() {
     updateActivityGrid();
     // Preload company tags mapping once (avoid per-row requests)
     if (USE_API) {
-        try { problemToTagIds = await api.getAllProblemCompanyTags(); } catch (e) { problemToTagIds = {}; }
+        try {
+            await ensureCompanyTagsCache();
+            problemToTagIds = await api.getAllProblemCompanyTags();
+        } catch (e) {
+            problemToTagIds = {};
+        }
     }
     renderProblemsByTopic();
     initCategories();
