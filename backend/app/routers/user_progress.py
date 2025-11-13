@@ -30,11 +30,13 @@ async def mark_problem_solved(user_id: str, problem_id: int, current_user: str =
         # Check if entry exists
         existing = supabase.table("user_progress").select("*").eq("user_id", uid).eq("problem_id", problem_id).execute()
         
+        today_str = date.today().isoformat()
+        
         if existing.data:
-            # Update existing entry
+            # Update existing entry - always update solved_at to today when marking as solved
             response = supabase.table("user_progress").update({
                 "solved": True,
-                "solved_at": date.today().isoformat()
+                "solved_at": today_str
             }).eq("user_id", uid).eq("problem_id", problem_id).execute()
         else:
             # Insert new entry
@@ -42,10 +44,10 @@ async def mark_problem_solved(user_id: str, problem_id: int, current_user: str =
                 "user_id": uid,
                 "problem_id": problem_id,
                 "solved": True,
-                "solved_at": date.today().isoformat()
+                "solved_at": today_str
             }).execute()
         
-        return {"message": "Problem marked as solved"}
+        return {"message": "Problem marked as solved", "solved_at": today_str}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -210,6 +212,11 @@ async def get_calendar_data(user_id: str, days: int = 371, current_user: str = D
                 # Only count if date_key is valid (YYYY-MM-DD format)
                 if len(date_key) == 10 and date_key.count('-') == 2:
                     calendar_map[date_key] = calendar_map.get(date_key, 0) + 1
+        
+        # Debug: log today's date and calendar data
+        import logging
+        logging.info(f"Calendar data: {calendar_map}")
+        logging.info(f"Today's date: {date.today().isoformat()}")
         
         # Return list of calendar data
         return [CalendarData(date=date_key, problem_count=count) 

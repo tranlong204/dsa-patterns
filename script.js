@@ -1033,9 +1033,14 @@ async function renderCalendar() {
     if (USE_API) {
         try {
             const apiCalendarData = await api.getCalendarData();
+            console.log('Calendar data from API:', apiCalendarData);
+            const todayKey = formatDate(new Date());
+            console.log("Today's date key:", todayKey);
             for (const item of apiCalendarData) {
                 calendarDataMap[item.date] = item.problem_count;
             }
+            console.log('Calendar data map:', calendarDataMap);
+            console.log('Today in map:', calendarDataMap[todayKey]);
             usedApiData = true;
         } catch (error) {
             console.error('Failed to fetch calendar data from API, using local storage:', error);
