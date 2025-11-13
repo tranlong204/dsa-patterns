@@ -22,13 +22,19 @@ async function trackActivity(problemId, date = new Date()) {
         if (USE_API) {
             try {
                 await api.markProblemSolved(problemId);
+                // Refresh calendar from API after update
+                await renderCalendar();
+                await updateActivityGrid();
             } catch (error) {
                 console.error('Failed to save to API:', error);
+                // Fallback to local updates
+                renderCalendar();
+                updateActivityGrid();
             }
+        } else {
+            renderCalendar();
+            updateActivityGrid();
         }
-        
-        renderCalendar();
-        updateActivityGrid();
     }
 }
 
@@ -50,13 +56,19 @@ async function removeActivity(problemId) {
     if (USE_API) {
         try {
             await api.markProblemUnsolved(problemId);
+            // Refresh calendar from API after update
+            await renderCalendar();
+            await updateActivityGrid();
         } catch (error) {
             console.error('Failed to update API:', error);
+            // Fallback to local updates
+            renderCalendar();
+            updateActivityGrid();
         }
+    } else {
+        renderCalendar();
+        updateActivityGrid();
     }
-    
-    renderCalendar();
-    updateActivityGrid();
 }
 
 // Clean up activity tracking to only include problems that are actually solved
@@ -866,7 +878,7 @@ async function toggleRevision(problemId) {
 }
 
 // Update activity grid with bar heights
-function updateActivityGrid() {
+async function updateActivityGrid() {
     const grid = document.getElementById('activityGrid');
     if (!grid) return;
     
@@ -882,11 +894,27 @@ function updateActivityGrid() {
         });
     }
     
-    // Count activity per day
+    // Count activity per day - use API data if available
     const activityCounts = {};
-    Object.keys(activityDates).forEach(dateKey => {
-        activityCounts[dateKey] = activityDates[dateKey].length;
-    });
+    
+    if (USE_API) {
+        try {
+            const apiCalendarData = await api.getCalendarData();
+            for (const item of apiCalendarData) {
+                activityCounts[item.date] = item.problem_count;
+            }
+        } catch (error) {
+            console.error('Failed to fetch calendar data for activity grid, using localStorage:', error);
+            // Fallback to localStorage
+            Object.keys(activityDates).forEach(dateKey => {
+                activityCounts[dateKey] = activityDates[dateKey].length;
+            });
+        }
+    } else {
+        Object.keys(activityDates).forEach(dateKey => {
+            activityCounts[dateKey] = activityDates[dateKey].length;
+        });
+    }
     
     // Find max count for scaling
     const maxCount = Math.max(...Object.values(activityCounts), 1);
@@ -915,24 +943,47 @@ function updateActivityGrid() {
 }
 
 // Calculate streaks
-function calculateStreaks() {
-    const sortedDates = Object.keys(activityDates).sort();
+function calculateStreaks(calendarDataMap = null) {
+    // Use provided calendar data map (from API) or fallback to localStorage
+    let datesWithActivity = [];
+    
+    if (calendarDataMap) {
+        // Use API calendar data
+        datesWithActivity = Object.keys(calendarDataMap)
+            .filter(date => calendarDataMap[date] > 0)
+            .sort();
+    } else {
+        // Use localStorage data
+        datesWithActivity = Object.keys(activityDates)
+            .filter(date => activityDates[date] && activityDates[date].length > 0)
+            .sort();
+    }
+    
     let currentStreak = 0;
     let maxStreak = 0;
     let tempStreak = 0;
     
     const today = new Date();
-    const todayKey = formatDate(today);
     
     // Check if today has activity
     let checkDate = new Date(today);
     let hasCurrentActivity = false;
     
-    if (sortedDates.length > 0) {
+    if (datesWithActivity.length > 0) {
+        const firstActivityDate = new Date(datesWithActivity[0]);
+        
         // Calculate current streak (backwards from today)
-        while (checkDate >= new Date(sortedDates[0])) {
+        while (checkDate >= firstActivityDate) {
             const dateKey = formatDate(checkDate);
-            if (activityDates[dateKey] && activityDates[dateKey].length > 0) {
+            let hasActivity = false;
+            
+            if (calendarDataMap) {
+                hasActivity = (calendarDataMap[dateKey] || 0) > 0;
+            } else {
+                hasActivity = activityDates[dateKey] && activityDates[dateKey].length > 0;
+            }
+            
+            if (hasActivity) {
                 if (!hasCurrentActivity) {
                     currentStreak++;
                     hasCurrentActivity = true;
@@ -944,13 +995,13 @@ function calculateStreaks() {
         }
         
         // Calculate max streak
-        for (let i = 0; i < sortedDates.length; i++) {
+        for (let i = 0; i < datesWithActivity.length; i++) {
             if (i === 0) {
                 tempStreak = 1;
                 maxStreak = 1;
             } else {
-                const prevDate = new Date(sortedDates[i - 1]);
-                const currDate = new Date(sortedDates[i]);
+                const prevDate = new Date(datesWithActivity[i - 1]);
+                const currDate = new Date(datesWithActivity[i]);
                 const diffDays = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
                 
                 if (diffDays === 1) {
@@ -1062,8 +1113,8 @@ async function renderCalendar() {
     
     container.appendChild(heatmapWrapper);
     
-    // Update streaks
-    const { currentStreak, maxStreak } = calculateStreaks();
+    // Update streaks - pass calendarDataMap to use API data
+    const { currentStreak, maxStreak } = calculateStreaks(usedApiData ? calendarDataMap : null);
     document.getElementById('currentStreak').textContent = currentStreak;
     document.getElementById('maxStreak').textContent = maxStreak;
 }
@@ -1149,7 +1200,7 @@ async function initApp() {
     }
     
     await renderCalendar();
-    updateActivityGrid();
+    await updateActivityGrid();
     // Preload company tags mapping once (avoid per-row requests)
     if (USE_API) {
         try {
