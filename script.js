@@ -22,6 +22,8 @@ async function trackActivity(problemId, date = new Date()) {
         if (USE_API) {
             try {
                 await api.markProblemSolved(problemId);
+                // Small delay to ensure database is updated
+                await new Promise(resolve => setTimeout(resolve, 100));
                 // Refresh calendar from API after update
                 await renderCalendar();
                 await updateActivityGrid();
@@ -56,6 +58,8 @@ async function removeActivity(problemId) {
     if (USE_API) {
         try {
             await api.markProblemUnsolved(problemId);
+            // Small delay to ensure database is updated
+            await new Promise(resolve => setTimeout(resolve, 100));
             // Refresh calendar from API after update
             await renderCalendar();
             await updateActivityGrid();
@@ -1128,18 +1132,24 @@ async function renderCalendar() {
 async function handleCheckboxChange(event, problemId) {
     const isChecked = event.target.checked;
     
-    if (isChecked) {
-        if (!solvedProblems.includes(problemId)) {
-            solvedProblems.push(problemId);
+    try {
+        if (isChecked) {
+            if (!solvedProblems.includes(problemId)) {
+                solvedProblems.push(problemId);
+                localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
+                await trackActivity(problemId); // Track activity when solved
+                await updateSidebarStats();
+            }
+        } else {
+            solvedProblems = solvedProblems.filter(id => id !== problemId);
             localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
-            await trackActivity(problemId); // Track activity when solved
+            await removeActivity(problemId); // Remove activity tracking when unchecked
             await updateSidebarStats();
         }
-    } else {
-        solvedProblems = solvedProblems.filter(id => id !== problemId);
-        localStorage.setItem('solvedProblems', JSON.stringify(solvedProblems));
-        await removeActivity(problemId); // Remove activity tracking when unchecked
-        await updateSidebarStats();
+    } catch (error) {
+        console.error('Error handling checkbox change:', error);
+        // Revert checkbox state on error
+        event.target.checked = !isChecked;
     }
 }
 
@@ -1220,8 +1230,23 @@ async function initApp() {
     initCategories();
 }
 
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+    // Only log errors that are actually from our code
+    if (event.reason && (
+        event.reason.message?.includes('API') ||
+        event.reason.message?.includes('fetch') ||
+        event.reason.message?.includes('network')
+    )) {
+        console.error('Unhandled promise rejection:', event.reason);
+    }
+    // Don't prevent default for browser extension errors
+});
+
 // Start the app
-initApp();
+initApp().catch(error => {
+    console.error('Failed to initialize app:', error);
+});
 
 // Expand/Collapse functionality
 document.getElementById('expandAllBtn').addEventListener('click', () => {
