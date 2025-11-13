@@ -183,14 +183,33 @@ async def get_calendar_data(user_id: str, days: int = 371, current_user: str = D
         supabase = get_supabase()
         
         # Get all solved problems with their solved dates
-        response = supabase.table("user_progress").select("*").eq("user_id", current_user).eq("solved", True).not_.is_("solved_at", "null").execute()
+        # Use a simpler query - get all solved=True and filter in Python
+        response = supabase.table("user_progress").select("problem_id, solved_at").eq("user_id", current_user).eq("solved", True).execute()
         
-        # Group by date
+        # Group by date - normalize date format to YYYY-MM-DD
         calendar_map = {}
         for row in response.data:
             solved_date = row.get('solved_at')
             if solved_date:
-                calendar_map[solved_date] = calendar_map.get(solved_date, 0) + 1
+                # Normalize date to YYYY-MM-DD format
+                # Handle both string and date/datetime objects
+                if isinstance(solved_date, str):
+                    # If it's a string, extract just the date part (YYYY-MM-DD)
+                    date_str = solved_date.split('T')[0] if 'T' in solved_date else solved_date.split(' ')[0]
+                    date_key = date_str[:10] if len(date_str) >= 10 else date_str
+                elif hasattr(solved_date, 'isoformat'):
+                    # It's a date or datetime object
+                    date_key = solved_date.isoformat()[:10]
+                elif hasattr(solved_date, 'date'):
+                    # It's a datetime object, get the date part
+                    date_key = solved_date.date().isoformat()
+                else:
+                    # Fallback: convert to string and take first 10 chars
+                    date_key = str(solved_date)[:10]
+                
+                # Only count if date_key is valid (YYYY-MM-DD format)
+                if len(date_key) == 10 and date_key.count('-') == 2:
+                    calendar_map[date_key] = calendar_map.get(date_key, 0) + 1
         
         # Return list of calendar data
         return [CalendarData(date=date_key, problem_count=count) 
