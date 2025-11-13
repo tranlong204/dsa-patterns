@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from app.database import get_supabase
 from app.models import UserProgress, ProgressStats, CalendarData
-from typing import List
+from typing import List, Optional
 from datetime import date, timedelta
 import json
 from app.auth import get_current_username
@@ -21,22 +21,45 @@ async def get_solved_problems(user_id: str, current_user: str = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{user_id}/solved/{problem_id}")
-async def mark_problem_solved(user_id: str, problem_id: int, current_user: str = Depends(get_current_username)):
+async def mark_problem_solved(
+    user_id: str, 
+    problem_id: int, 
+    current_user: str = Depends(get_current_username),
+    body: Optional[dict] = Body(None)
+):
     """Mark a problem as solved for a user"""
     try:
         supabase = get_supabase()
         uid = current_user
         
+        # Get solved_at from request body (user's local date) or use server date as fallback
+        if body and isinstance(body, dict) and 'solved_at' in body:
+            solved_at_str = body['solved_at']
+        else:
+            # Fallback to server date for backward compatibility
+            solved_at_str = date.today().isoformat()
+        
+        # Validate date format (YYYY-MM-DD)
+        try:
+            # Validate the date string format
+            if len(solved_at_str) == 10 and solved_at_str.count('-') == 2:
+                # Try to parse to ensure it's a valid date
+                year, month, day = map(int, solved_at_str.split('-'))
+                date(year, month, day)  # This will raise ValueError if invalid
+            else:
+                raise ValueError("Invalid date format")
+        except (ValueError, TypeError):
+            # If invalid, fall back to server date
+            solved_at_str = date.today().isoformat()
+        
         # Check if entry exists
         existing = supabase.table("user_progress").select("*").eq("user_id", uid).eq("problem_id", problem_id).execute()
         
-        today_str = date.today().isoformat()
-        
         if existing.data:
-            # Update existing entry - always update solved_at to today when marking as solved
+            # Update existing entry - always update solved_at when marking as solved
             response = supabase.table("user_progress").update({
                 "solved": True,
-                "solved_at": today_str
+                "solved_at": solved_at_str
             }).eq("user_id", uid).eq("problem_id", problem_id).execute()
         else:
             # Insert new entry
@@ -44,10 +67,10 @@ async def mark_problem_solved(user_id: str, problem_id: int, current_user: str =
                 "user_id": uid,
                 "problem_id": problem_id,
                 "solved": True,
-                "solved_at": today_str
+                "solved_at": solved_at_str
             }).execute()
         
-        return {"message": "Problem marked as solved", "solved_at": today_str}
+        return {"message": "Problem marked as solved", "solved_at": solved_at_str}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

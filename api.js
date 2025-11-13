@@ -118,9 +118,19 @@ class APIClient {
     }
 
     async markProblemSolved(problemId) {
+        // Send user's local date to avoid timezone issues
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const localDate = `${year}-${month}-${day}`;
+        
         return await this.request(
             `/api/user/${this.userId}/solved/${problemId}`,
-            { method: 'POST' }
+            { 
+                method: 'POST',
+                body: { solved_at: localDate }
+            }
         );
     }
 
