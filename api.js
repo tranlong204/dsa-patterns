@@ -125,6 +125,8 @@ class APIClient {
         const day = String(today.getDate()).padStart(2, '0');
         const localDate = `${year}-${month}-${day}`;
         
+        console.log(`Marking problem ${problemId} as solved with date: ${localDate}`);
+        
         return await this.request(
             `/api/user/${this.userId}/solved/${problemId}`,
             { 
