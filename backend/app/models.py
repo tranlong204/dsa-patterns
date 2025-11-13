@@ -61,3 +61,6 @@ class CompanyTagCreate(BaseModel):
 class CompanyTagUpdate(BaseModel):
     name: Optional[str] = None
 
+class MarkSolvedRequest(BaseModel):
+    solved_at: Optional[str] = None
+

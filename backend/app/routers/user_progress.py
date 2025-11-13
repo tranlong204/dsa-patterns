@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
 from app.database import get_supabase
-from app.models import UserProgress, ProgressStats, CalendarData
+from app.models import UserProgress, ProgressStats, CalendarData, MarkSolvedRequest
 from typing import List, Optional
 from datetime import date, timedelta
 import json
@@ -25,19 +25,22 @@ async def mark_problem_solved(
     user_id: str, 
     problem_id: int, 
     current_user: str = Depends(get_current_username),
-    body: Optional[dict] = Body(None)
+    request: Optional[MarkSolvedRequest] = None
 ):
     """Mark a problem as solved for a user"""
     try:
+        import logging
         supabase = get_supabase()
         uid = current_user
         
         # Get solved_at from request body (user's local date) or use server date as fallback
-        if body and isinstance(body, dict) and 'solved_at' in body:
-            solved_at_str = body['solved_at']
+        if request and request.solved_at:
+            solved_at_str = request.solved_at
+            logging.info(f"Using date from request body: {solved_at_str}")
         else:
             # Fallback to server date for backward compatibility
             solved_at_str = date.today().isoformat()
+            logging.info(f"No date in request, using server date: {solved_at_str}")
         
         # Validate date format (YYYY-MM-DD)
         try:
@@ -48,9 +51,12 @@ async def mark_problem_solved(
                 date(year, month, day)  # This will raise ValueError if invalid
             else:
                 raise ValueError("Invalid date format")
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
             # If invalid, fall back to server date
+            logging.warning(f"Invalid date format {solved_at_str}, falling back to server date: {e}")
             solved_at_str = date.today().isoformat()
+        
+        logging.info(f"Final solved_at date: {solved_at_str}")
         
         # Check if entry exists
         existing = supabase.table("user_progress").select("*").eq("user_id", uid).eq("problem_id", problem_id).execute()
