@@ -22,10 +22,10 @@ async def get_solved_problems(user_id: str, current_user: str = Depends(get_curr
 
 @router.post("/{user_id}/solved/{problem_id}")
 async def mark_problem_solved(
-    user_id: str, 
-    problem_id: int, 
+    user_id: str,
+    problem_id: int,
     current_user: str = Depends(get_current_username),
-    request: Optional[MarkSolvedRequest] = None
+    request: Optional[MarkSolvedRequest] = Body(None)
 ):
     """Mark a problem as solved for a user"""
     try:
