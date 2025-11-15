@@ -66,34 +66,33 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ROLE_NAME="lambda-execution-role"
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
 
-if ! aws iam get-role --role-name $ROLE_NAME &> /dev/null; then
-    echo "Creating IAM role for Lambda..."
-    cat > /tmp/lambda-role-policy.json << EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-    
-    aws iam create-role \
-        --role-name $ROLE_NAME \
-        --assume-role-policy-document file:///tmp/lambda-role-policy.json \
-        --output json > /dev/null
-    
+# Try to get or create the role
+if aws iam get-role --role-name $ROLE_NAME &> /dev/null; then
+    echo "✓ Using existing IAM role: $ROLE_ARN"
+elif aws iam create-role \
+    --role-name $ROLE_NAME \
+    --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}' \
+    --output json &> /dev/null; then
     # Attach basic Lambda execution policy
     aws iam attach-role-policy \
         --role-name $ROLE_NAME \
-        --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-    
-    echo "✓ IAM role created"
+        --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole &> /dev/null || true
+    echo "✓ IAM role created: $ROLE_ARN"
+else
+    echo "⚠️  Cannot create IAM role (insufficient permissions)"
+    echo "Please provide an existing Lambda execution role ARN, or create one manually:"
+    echo "  - Go to IAM Console → Roles → Create role"
+    echo "  - Select 'AWS service' → 'Lambda'"
+    echo "  - Attach 'AWSLambdaBasicExecutionRole' policy"
+    echo "  - Name it 'lambda-execution-role'"
+    echo ""
+    read -p "Enter existing Lambda role ARN (or press Enter to try default): " CUSTOM_ROLE_ARN
+    if [ ! -z "$CUSTOM_ROLE_ARN" ]; then
+        ROLE_ARN="$CUSTOM_ROLE_ARN"
+    else
+        echo "Using default role ARN: $ROLE_ARN"
+        echo "If this fails, you'll need to create the role manually."
+    fi
 fi
 
 # Deploy Lambda function
