@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DSA Patterns API - Simplified for Public RDS (Free Tier)
+
+Parameters:
+  DatabaseEndpoint:
+    Type: String
+    Description: RDS endpoint (e.g., dsapatterns-db.xxxxx.rds.amazonaws.com)
+  DatabaseName:
+    Type: String
+    Default: dsapatterns
+  DatabaseUsername:
+    Type: String
+    Default: admin
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: RDS master password
+  JWTSecretKey:
+    Type: String
+    NoEcho: true
+    Description: JWT secret key for token signing
+  DefaultPasswordHash:
+    Type: String
+    NoEcho: true
+    Description: Bcrypt hash of default user password
+  CORSOriginRegex:
+    Type: String
+    Default: 'https://.*\.vercel\.app'
+    Description: Regex pattern for allowed CORS origins
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.13
+    Environment:
+      Variables:
+        RDS_HOST: !Ref DatabaseEndpoint
+        RDS_PORT: '5432'
+        RDS_DATABASE: !Ref DatabaseName
+        RDS_USER: !Ref DatabaseUsername
+        RDS_PASSWORD: !Ref DatabasePassword
+        JWT_SECRET_KEY: !Ref JWTSecretKey
+        JWT_ALGORITHM: HS256
+        ACCESS_TOKEN_EXPIRE_MINUTES: '43200'
+        DEFAULT_USERNAME: admin
+        DEFAULT_PASSWORD_HASH: !Ref DefaultPasswordHash
+        CORS_ORIGIN_REGEX: !Ref CORSOriginRegex
+
+Resources:
+  DSAPatternsAPI:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_handler.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+  DSAAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${DSAAPI}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+

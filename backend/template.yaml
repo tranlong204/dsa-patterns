@@ -1,0 +1,271 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DSA Patterns API - Serverless FastAPI on AWS Lambda
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.13
+    Environment:
+      Variables:
+        RDS_HOST: !Ref DatabaseEndpoint
+        RDS_PORT: '5432'
+        RDS_DATABASE: !Ref DatabaseName
+        RDS_USER: !Ref DatabaseUsername
+        RDS_PASSWORD: !Ref DatabasePassword
+        JWT_SECRET_KEY: !Ref JWTSecretKey
+        JWT_ALGORITHM: HS256
+        ACCESS_TOKEN_EXPIRE_MINUTES: '43200'
+        DEFAULT_USERNAME: admin
+        DEFAULT_PASSWORD_HASH: !Ref DefaultPasswordHash
+        CORS_ORIGIN_REGEX: !Ref CORSOriginRegex
+
+Parameters:
+  DatabaseName:
+    Type: String
+    Default: dsapatterns
+    Description: RDS database name
+  
+  DatabaseUsername:
+    Type: String
+    Default: admin
+    Description: RDS master username
+  
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: RDS master password
+    MinLength: 8
+  
+  JWTSecretKey:
+    Type: String
+    NoEcho: true
+    Description: JWT secret key for token signing
+  
+  DefaultPasswordHash:
+    Type: String
+    NoEcho: true
+    Description: Bcrypt hash of default user password
+  
+  CORSOriginRegex:
+    Type: String
+    Default: 'https://.*\.vercel\.app'
+    Description: Regex pattern for allowed CORS origins
+
+Resources:
+  # RDS PostgreSQL Database
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: dsapatterns-db
+      Engine: postgres
+      EngineVersion: '15.4'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      StorageType: gp2
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      DBName: !Ref DatabaseName
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Database
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS database
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: DSA Patterns DB Subnet Group
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: Allow PostgreSQL from Lambda
+
+  # VPC and Networking (simplified - you may want to use existing VPC)
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: DSA Patterns VPC
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.1.0/24
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Private Subnet 1
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.0.2.0/24
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Private Subnet 2
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: DSA Patterns IGW
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Public Subnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: DSA Patterns Private Routes
+
+  DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda function
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic
+
+  # Lambda Function
+  DSAPatternsAPI:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda_handler.handler
+      CodeUri: .
+      Runtime: python3.13
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref DSAPatternsAPI
+
+  DSAAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${DSAAPI}.execute-api.${AWS::Region}.amazonaws.com/prod/'
+  
+  DatabaseEndpoint:
+    Description: RDS database endpoint
+    Value: !GetAtt Database.Endpoint.Address
+  
+  DatabasePort:
+    Description: RDS database port
+    Value: !GetAtt Database.Endpoint.Port
+
