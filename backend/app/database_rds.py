@@ -108,6 +108,7 @@ class QueryBuilder:
         self.limit_val = None
         self.offset_val = None
         self.order_by = None
+        self._negate_next = False
     
     def eq(self, column: str, value):
         """Add equality condition"""
@@ -125,16 +126,21 @@ class QueryBuilder:
     
     def is_(self, column: str, value):
         """Add IS condition"""
+        negate = "NOT " if self._negate_next else ""
+        self._negate_next = False
+        
         if value == "null":
-            self.conditions.append(f"{column} IS NULL")
+            self.conditions.append(f"{column} IS {negate}NULL")
         else:
-            self.conditions.append(f"{column} IS ${self.param_counter}")
+            self.conditions.append(f"{column} IS {negate}${self.param_counter}")
             self.params.append(value)
             self.param_counter += 1
         return self
     
     def not_(self):
-        """Negate next condition"""
+        """Negate next condition - returns self for chaining"""
+        # Store that next condition should be negated
+        self._negate_next = True
         return self
     
     def in_(self, column: str, values: list):
