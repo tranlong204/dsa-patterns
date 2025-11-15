@@ -145,7 +145,8 @@ class QueryBuilder:
     
     def in_(self, column: str, values: list):
         """Add IN condition"""
-        placeholders = ', '.join([f'${i}' for i in range(self.param_counter, self.param_counter + len(values))])
+        # Use %s placeholders directly for psycopg2
+        placeholders = ', '.join(['%s'] * len(values))
         self.conditions.append(f"{column} IN ({placeholders})")
         self.params.extend(values)
         self.param_counter += len(values)
@@ -208,7 +209,10 @@ class QueryBuilder:
                 
                 # Add WHERE clause
                 if self.conditions:
-                    where_clause = ' AND '.join(self.conditions).replace('$', '%')
+                    where_clause = ' AND '.join(self.conditions)
+                    # Replace $1, $2, $3... with %s (but not other $ characters)
+                    import re
+                    where_clause = re.sub(r'\$\d+', '%s', where_clause)
                     query += f" WHERE {where_clause}"
                     update_values.extend(self.params)
                 
@@ -222,7 +226,10 @@ class QueryBuilder:
             elif self.operation == 'delete':
                 query = f"DELETE FROM {self.table_name}"
                 if self.conditions:
-                    where_clause = ' AND '.join(self.conditions).replace('$', '%')
+                    where_clause = ' AND '.join(self.conditions)
+                    # Replace $1, $2, $3... with %s (but not other $ characters)
+                    import re
+                    where_clause = re.sub(r'\$\d+', '%s', where_clause)
                     query += f" WHERE {where_clause}"
                     cursor.execute(query, self.params)
                 else:
