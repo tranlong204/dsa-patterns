@@ -1,7 +1,21 @@
 // Load saved progress from localStorage
-let solvedProblems = JSON.parse(localStorage.getItem('solvedProblems')) || [];
-let activityDates = JSON.parse(localStorage.getItem('activityDates')) || {};
-let revisionProblems = JSON.parse(localStorage.getItem('revisionProblems')) || [];
+// Helper function to safely parse JSON from localStorage
+function safeParseJSON(key, defaultValue) {
+    try {
+        const value = localStorage.getItem(key);
+        if (value === null || value === undefined || value === 'undefined') {
+            return defaultValue;
+        }
+        return JSON.parse(value);
+    } catch (e) {
+        console.warn(`Failed to parse ${key} from localStorage:`, e);
+        return defaultValue;
+    }
+}
+
+let solvedProblems = safeParseJSON('solvedProblems', []);
+let activityDates = safeParseJSON('activityDates', {});
+let revisionProblems = safeParseJSON('revisionProblems', []);
 let isRevisionFilterActive = false;
 let currentFilter = null; // 'solved', 'unsolved', or null (show all)
 
