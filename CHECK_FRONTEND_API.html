@@ -27,14 +27,18 @@
         // Test connection
         results.innerHTML += `<p><strong>Testing connection...</strong></p>`;
         fetch(`${apiBaseUrl}/health`)
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
             .then(data => {
                 results.innerHTML += `<p style="color: green;">✅ API is reachable: ${JSON.stringify(data)}</p>`;
                 results.innerHTML += `<p><strong>If this shows the Lambda URL, your frontend is correctly configured.</strong></p>`;
                 results.innerHTML += `<p><strong>If this shows localhost or Render, clear localStorage and reload.</strong></p>`;
             })
             .catch(e => {
-                results.innerHTML += `<p style="color: red;">❌ API connection failed: ${e.message}</p>`;
+                results.innerHTML += `<p style="color: orange;">⚠️ API connection test failed: ${e.message}</p>`;
+                results.innerHTML += `<p><strong>This might be a CORS issue. Check browser console Network tab when making actual updates.</strong></p>`;
             });
         
         // Instructions
