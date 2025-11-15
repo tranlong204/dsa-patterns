@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnose Update Issue</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnose Update Issue</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+        
+        async function diagnose() {
+            results.innerHTML = '<p>Running diagnostics...</p>';
+            
+            let html = '';
+            
+            // 1. Check localStorage
+            html += '<div class="section"><h2>1. localStorage Check</h2>';
+            const storedApi = localStorage.getItem('API_BASE_URL');
+            html += `<p><strong>API_BASE_URL:</strong> ${storedApi || 'NOT SET (using default)'}</p>`;
+            const expectedUrl = 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+            if (storedApi && storedApi !== expectedUrl && !storedApi.includes('execute-api')) {
+                html += `<p class="error">❌ PROBLEM: localStorage has wrong URL: ${storedApi}</p>`;
+                html += `<p><strong>Fix:</strong> <button onclick="localStorage.removeItem('API_BASE_URL'); location.reload();">Clear localStorage</button></p>`;
+            } else {
+                html += `<p class="success">✅ localStorage is correct or using default</p>`;
+            }
+            html += '</div>';
+            
+            // 2. Check what API URL is actually being used
+            html += '<div class="section"><h2>2. Actual API URL</h2>';
+            const apiBaseUrl = storedApi && storedApi.trim() !== '' 
+                ? storedApi 
+                : expectedUrl;
+            html += `<p><strong>API URL being used:</strong> <code>${apiBaseUrl}</code></p>`;
+            if (apiBaseUrl.includes('execute-api')) {
+                html += `<p class="success">✅ Using Lambda API Gateway</p>`;
+            } else if (apiBaseUrl.includes('onrender.com')) {
+                html += `<p class="error">❌ PROBLEM: Using Render backend (Supabase)</p>`;
+            } else if (apiBaseUrl.includes('localhost')) {
+                html += `<p class="error">❌ PROBLEM: Using local backend</p>`;
+            }
+            html += '</div>';
+            
+            // 3. Test Lambda connection
+            html += '<div class="section"><h2>3. Lambda Connection Test</h2>';
+            try {
+                const healthResponse = await fetch(`${apiBaseUrl}/health`);
+                if (healthResponse.ok) {
+                    const healthData = await healthResponse.json();
+                    html += `<p class="success">✅ Lambda is reachable: ${JSON.stringify(healthData)}</p>`;
+                } else {
+                    html += `<p class="error">❌ Lambda returned error: ${healthResponse.status}</p>`;
+                }
+            } catch (e) {
+                html += `<p class="error">❌ Cannot reach Lambda: ${e.message}</p>`;
+                html += `<p class="warning">This might be a CORS issue. Check browser console Network tab.</p>`;
+            }
+            html += '</div>';
+            
+            // 4. Test database configuration
+            html += '<div class="section"><h2>4. Database Configuration Check</h2>';
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                html += `<p class="warning">⚠️ Not logged in. Please log in first.</p>`;
+            } else {
+                try {
+                    const dbResponse = await fetch(`${apiBaseUrl}/debug/database`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (dbResponse.ok) {
+                        const dbData = await dbResponse.json();
+                        html += `<pre>${JSON.stringify(dbData, null, 2)}</pre>`;
+                        if (dbData.Database_Type === 'RDS' && dbData.Client_Type === 'RDSClient') {
+                            html += `<p class="success">✅ Lambda is using RDS</p>`;
+                        } else {
+                            html += `<p class="error">❌ Lambda is NOT using RDS! It's using: ${dbData.Database_Type}</p>`;
+                        }
+                    } else {
+                        html += `<p class="error">❌ Cannot check database config: ${dbResponse.status}</p>`;
+                    }
+                } catch (e) {
+                    html += `<p class="error">❌ Error checking database: ${e.message}</p>`;
+                }
+            }
+            html += '</div>';
+            
+            // 5. Instructions
+            html += '<div class="section"><h2>5. Next Steps</h2>';
+            html += '<ol>';
+            html += '<li><strong>Check Network Tab:</strong> Open DevTools (F12) → Network tab → Make an update → Check the request URL</li>';
+            html += '<li><strong>If request goes to Render/localhost:</strong> Clear localStorage and reload</li>';
+            html += '<li><strong>If request goes to Lambda but updates Supabase:</strong> Lambda environment variables might be wrong</li>';
+            html += '<li><strong>Hard refresh:</strong> Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>';
+            html += '<li><strong>Check Vercel deployment:</strong> Make sure latest code is deployed</li>';
+            html += '</ol>';
+            html += '</div>';
+            
+            results.innerHTML = html;
+        }
+        
+        // Run on load
+        diagnose();
+    </script>
+</body>
+</html>
+
