@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('password', password);
 
         try {
-            // Get API base from URL params or localStorage; fallback to Render backend
+            // Get API base from URL params or localStorage; fallback to Lambda API Gateway
             let base = '';
             const params = new URLSearchParams(window.location.search);
             const apiParam = params.get('api');
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 base = apiParam;
                 localStorage.setItem('API_BASE_URL', base);
             } else {
-                base = localStorage.getItem('API_BASE_URL') || 'https://dsa-patterns-backend.onrender.com';
+                base = localStorage.getItem('API_BASE_URL') || 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
             }
             const endpoint = (base || '').replace(/\/$/, '') + '/api/auth/login';
             const resp = await fetch(endpoint, {
