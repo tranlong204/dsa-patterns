@@ -12,6 +12,12 @@
 
 const API_BASE_URL = (function() {
     const stored = localStorage.getItem('API_BASE_URL');
+    // If stored URL is Render backend, ignore it and use Lambda (migration)
+    if (stored && stored.includes('onrender.com')) {
+        console.warn('Detected old Render backend URL in localStorage, clearing it');
+        localStorage.removeItem('API_BASE_URL');
+        return 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+    }
     return stored && stored.trim() !== '' ? stored : 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
 })();
 

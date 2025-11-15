@@ -29,7 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 base = apiParam;
                 localStorage.setItem('API_BASE_URL', base);
             } else {
-                base = localStorage.getItem('API_BASE_URL') || 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+                const stored = localStorage.getItem('API_BASE_URL');
+                // If stored URL is Render backend, ignore it and use Lambda (migration)
+                if (stored && stored.includes('onrender.com')) {
+                    console.warn('Detected old Render backend URL in localStorage, clearing it');
+                    localStorage.removeItem('API_BASE_URL');
+                    base = 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+                } else {
+                    base = stored && stored.trim() !== '' ? stored : 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+                }
             }
             const endpoint = (base || '').replace(/\/$/, '') + '/api/auth/login';
             const resp = await fetch(endpoint, {
