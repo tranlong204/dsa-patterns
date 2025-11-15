@@ -244,12 +244,6 @@ def get_rds_client():
     return _rds_client
 
 def get_supabase():
-    """Get database client (RDS or Supabase based on environment)"""
-    # Check if we're using RDS
-    if os.getenv('RDS_HOST'):
-        return get_rds_client()
-    else:
-        # Fallback to Supabase
-        from app.database import get_supabase as get_supabase_original
-        return get_supabase_original()
+    """Get RDS database client - always returns RDS client"""
+    return get_rds_client()
 
