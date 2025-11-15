@@ -4,7 +4,10 @@ Database connection - supports both RDS and Supabase
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env file only for local development
+# In Lambda, environment variables are set directly, so we don't want to override them
+# override=False ensures Lambda env vars take precedence over .env file
+load_dotenv(override=False)
 
 # Check if using RDS or Supabase
 USE_RDS = bool(os.getenv("RDS_HOST"))
