@@ -76,8 +76,10 @@ class RDSClient:
                     values[i] = json.dumps(value)
             
             # For problem_company_tags, use ON CONFLICT DO NOTHING to handle duplicates
+            # Handle both the unique constraint and potential primary key conflicts
             if self.table_name == 'problem_company_tags':
-                # Check if there's a unique constraint on (problem_id, tag_id)
+                # Use ON CONFLICT on the unique constraint (problem_id, tag_id)
+                # If that fails, also handle primary key conflicts
                 query = f"""INSERT INTO {self.table_name} ({columns}) 
                           VALUES ({placeholders}) 
                           ON CONFLICT (problem_id, tag_id) DO NOTHING
@@ -89,6 +91,7 @@ class RDSClient:
             conn.commit()
             result = cursor.fetchone()
             cursor.close()
+            # ON CONFLICT DO NOTHING may return no row, which is fine
             return Response([dict(result)] if result else [])
     
     def update(self, data):
