@@ -1,9 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
     // If already logged in, go to main
+    // But first verify the token is valid by checking if it's not expired
     const token = localStorage.getItem('access_token');
     if (token) {
-        window.location.href = 'index.html';
-        return;
+        // Try to decode token to check if it's valid (basic check)
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const now = Math.floor(Date.now() / 1000);
+            // If token is expired or will expire soon, clear it
+            if (payload.exp && payload.exp < now) {
+                localStorage.removeItem('access_token');
+            } else {
+                // Token is valid, redirect to main page
+                window.location.href = 'index.html';
+                return;
+            }
+        } catch (e) {
+            // Token is malformed, clear it
+            localStorage.removeItem('access_token');
+        }
     }
 
     const form = document.getElementById('loginForm');

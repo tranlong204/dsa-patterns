@@ -1347,7 +1347,11 @@ document.getElementById('revisionListBtn').addEventListener('click', () => {
 // Logout button
 document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('access_token');
-    window.location.href = 'login.html';
+    // Clear token and redirect to login (only if not already on login page)
+    localStorage.removeItem('access_token');
+    if (!window.location.pathname.includes('login.html')) {
+        window.location.href = 'login.html';
+    }
 });
 
 // Show add problem modal

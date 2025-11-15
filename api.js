@@ -80,7 +80,12 @@ class APIClient {
                 const errorText = await response.text();
                 console.error('API error response:', errorText);
                 if (response.status === 401) {
-                    window.location.href = 'login.html';
+                    // Clear invalid token
+                    localStorage.removeItem('access_token');
+                    // Only redirect if not already on login page
+                    if (!window.location.pathname.includes('login.html')) {
+                        window.location.href = 'login.html';
+                    }
                     return;
                 }
                 throw new Error(`HTTP error! status: ${response.status}`);
