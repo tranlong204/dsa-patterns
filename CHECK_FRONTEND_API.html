@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Frontend API URL</title>
+</head>
+<body>
+    <h1>Frontend API Configuration Check</h1>
+    <div id="results"></div>
+    <script>
+        const results = document.getElementById('results');
+        
+        // Check localStorage
+        const storedApi = localStorage.getItem('API_BASE_URL');
+        results.innerHTML += `<p><strong>localStorage API_BASE_URL:</strong> ${storedApi || 'NOT SET (using default)'}</p>`;
+        
+        // Check URL params
+        const params = new URLSearchParams(window.location.search);
+        const apiParam = params.get('api');
+        results.innerHTML += `<p><strong>URL ?api= parameter:</strong> ${apiParam || 'NOT SET'}</p>`;
+        
+        // Check what api.js would use
+        const apiBaseUrl = storedApi && storedApi.trim() !== '' 
+            ? storedApi 
+            : 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
+        results.innerHTML += `<p><strong>Actual API URL being used:</strong> ${apiBaseUrl}</p>`;
+        
+        // Test connection
+        results.innerHTML += `<p><strong>Testing connection...</strong></p>`;
+        fetch(`${apiBaseUrl}/health`)
+            .then(r => r.json())
+            .then(data => {
+                results.innerHTML += `<p style="color: green;">✅ API is reachable: ${JSON.stringify(data)}</p>`;
+                results.innerHTML += `<p><strong>If this shows the Lambda URL, your frontend is correctly configured.</strong></p>`;
+                results.innerHTML += `<p><strong>If this shows localhost or Render, clear localStorage and reload.</strong></p>`;
+            })
+            .catch(e => {
+                results.innerHTML += `<p style="color: red;">❌ API connection failed: ${e.message}</p>`;
+            });
+        
+        // Instructions
+        results.innerHTML += `
+            <hr>
+            <h2>Instructions:</h2>
+            <ol>
+                <li>Check the "Actual API URL" above</li>
+                <li>If it's NOT the Lambda URL, clear localStorage:
+                    <pre>localStorage.removeItem('API_BASE_URL'); location.reload();</pre>
+                </li>
+                <li>Open browser DevTools → Network tab</li>
+                <li>Make an update on the UI</li>
+                <li>Check the request URL in Network tab - it should start with the Lambda URL</li>
+            </ol>
+        `;
+    </script>
+</body>
+</html>
+
