@@ -27,7 +27,12 @@ def get_supabase():
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
     
-    logger.info(f"Database selection: RDS_HOST={bool(rds_host)}, SUPABASE_URL={bool(supabase_url)}")
+    # Log actual values for debugging
+    rds_status = 'SET' if rds_host else 'NOT SET'
+    supabase_status = 'SET' if supabase_url else 'NOT SET'
+    logger.info("Database selection check: RDS_HOST=%s, SUPABASE_URL=%s", rds_status, supabase_status)
+    if rds_host:
+        logger.info("RDS_HOST is set, using RDS PostgreSQL")
     
     if rds_host:
         # Use RDS PostgreSQL

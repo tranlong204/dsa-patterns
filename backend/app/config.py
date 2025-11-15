@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 from typing import List
 
-load_dotenv()
+# Load .env file only for local development
+# In Lambda, environment variables are set directly, so we don't want to override them
+load_dotenv(override=False)
 
 class Settings:
     # Database settings (RDS or Supabase)
