@@ -63,36 +63,8 @@ class RDSClient:
         return QueryBuilder(self.table_name, 'select', columns)
     
     def insert(self, data):
-        """Insert data"""
-        with get_db_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            columns = ', '.join(data.keys())
-            placeholders = ', '.join(['%s'] * len(data))
-            values = list(data.values())
-            
-            # Handle JSON fields
-            for i, (key, value) in enumerate(data.items()):
-                if isinstance(value, (list, dict)):
-                    values[i] = json.dumps(value)
-            
-            # For problem_company_tags, use ON CONFLICT DO NOTHING to handle duplicates
-            # Handle both the unique constraint and potential primary key conflicts
-            if self.table_name == 'problem_company_tags':
-                # Use ON CONFLICT on the unique constraint (problem_id, tag_id)
-                # If that fails, also handle primary key conflicts
-                query = f"""INSERT INTO {self.table_name} ({columns}) 
-                          VALUES ({placeholders}) 
-                          ON CONFLICT (problem_id, tag_id) DO NOTHING
-                          RETURNING *"""
-            else:
-                query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders}) RETURNING *"
-            
-            cursor.execute(query, values)
-            conn.commit()
-            result = cursor.fetchone()
-            cursor.close()
-            # ON CONFLICT DO NOTHING may return no row, which is fine
-            return Response([dict(result)] if result else [])
+        """Start an INSERT query - returns a query builder"""
+        return QueryBuilder(self.table_name, 'insert', None, None, data)
     
     def update(self, data):
         """Start an UPDATE query"""
@@ -109,11 +81,12 @@ class RDSClient:
 class QueryBuilder:
     """Query builder that mimics Supabase query interface"""
     
-    def __init__(self, table_name: str, operation: str, columns=None, update_data=None):
+    def __init__(self, table_name: str, operation: str, columns=None, update_data=None, insert_data=None):
         self.table_name = table_name
         self.operation = operation
         self.columns = columns or ['*']
         self.update_data = update_data
+        self.insert_data = insert_data
         self.conditions = []
         self.params = []
         self.param_counter = 1
@@ -234,6 +207,35 @@ class QueryBuilder:
                 results = cursor.fetchall()
                 cursor.close()
                 return Response([dict(row) for row in results])
+            
+            elif self.operation == 'insert':
+                if not self.insert_data:
+                    raise ValueError("Insert data is required")
+                
+                columns = ', '.join(self.insert_data.keys())
+                placeholders = ', '.join(['%s'] * len(self.insert_data))
+                values = list(self.insert_data.values())
+                
+                # Handle JSON fields
+                for i, (key, value) in enumerate(self.insert_data.items()):
+                    if isinstance(value, (list, dict)):
+                        values[i] = json.dumps(value)
+                
+                # For problem_company_tags, use ON CONFLICT DO NOTHING to handle duplicates
+                if self.table_name == 'problem_company_tags':
+                    query = f"""INSERT INTO {self.table_name} ({columns}) 
+                              VALUES ({placeholders}) 
+                              ON CONFLICT (problem_id, tag_id) DO NOTHING
+                              RETURNING *"""
+                else:
+                    query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders}) RETURNING *"
+                
+                cursor.execute(query, values)
+                conn.commit()
+                result = cursor.fetchone()
+                cursor.close()
+                # ON CONFLICT DO NOTHING may return no row, which is fine
+                return Response([dict(result)] if result else [])
             
             elif self.operation == 'delete':
                 query = f"DELETE FROM {self.table_name}"
