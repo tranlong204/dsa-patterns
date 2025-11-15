@@ -84,8 +84,11 @@ async def create_problem(problem: ProblemCreate):
 @router.put("/{problem_id}", response_model=Problem)
 async def update_problem(problem_id: int, problem: ProblemUpdate):
     """Update an existing problem"""
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         supabase = get_supabase()
+        logger.info(f"update_problem: Using database client type: {type(supabase).__name__}")
         data = problem.dict(exclude_none=True)
         
         # Convert topics to JSON if present
