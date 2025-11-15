@@ -12,7 +12,7 @@
 
 const API_BASE_URL = (function() {
     const stored = localStorage.getItem('API_BASE_URL');
-    return stored && stored.trim() !== '' ? stored : 'https://dsa-patterns-backend.onrender.com';
+    return stored && stored.trim() !== '' ? stored : 'https://5n2tv37eki.execute-api.us-west-1.amazonaws.com/prod';
 })();
 
 class APIClient {
