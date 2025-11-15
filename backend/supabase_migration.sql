@@ -79,3 +79,49 @@ CREATE TRIGGER update_user_progress_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+
+DROP POLICY IF EXISTS "Users can delete progress" ON user_progress;
+CREATE POLICY "Users can delete progress" ON user_progress
+    FOR DELETE USING (true);
+
+ALTER TABLE user_progress ADD COLUMN IF NOT EXISTS in_revision BOOLEAN DEFAULT FALSE;
+
+SELECT setval('problems_id_seq', (SELECT MAX(id) FROM problems), true);
+
+ALTER TABLE problems ADD COLUMN IF NOT EXISTS solution_text TEXT;
+
+---=============Add company tags =====================
+
+
+-- Company tags table
+create table if not exists company_tags (
+    id bigserial primary key,
+    name text unique not null
+);
+
+-- Junction table between problems and company_tags
+create table if not exists problem_company_tags (
+    id bigserial primary key,
+    problem_id integer not null references problems(id) on delete cascade,
+    tag_id integer not null references company_tags(id) on delete cascade,
+    unique(problem_id, tag_id)
+);
+
+-- Basic permissive policies (adjust in Supabase dashboard if using RLS)
+alter table company_tags enable row level security;
+alter table problem_company_tags enable row level security;
+
+do $$ begin
+    if not exists (
+        select 1 from pg_policies where schemaname = 'public' and tablename = 'company_tags' and policyname = 'Allow all on company_tags'
+    ) then
+        create policy "Allow all on company_tags" on company_tags for all using (true) with check (true);
+    end if;
+    if not exists (
+        select 1 from pg_policies where schemaname = 'public' and tablename = 'problem_company_tags' and policyname = 'Allow all on problem_company_tags'
+    ) then
+        create policy "Allow all on problem_company_tags" on problem_company_tags for all using (true) with check (true);
+    end if;
+end $$;
+
+

@@ -1,0 +1,21 @@
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "dsa-patterns-api"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-west-1"
+parameter_overrides = [
+    "DatabaseEndpoint=dsa-patterns.cxm66ak2grwu.us-west-1.rds.amazonaws.com",
+    "DatabaseName=dsa-patterns",
+    "DatabaseUsername=postgres"
+]
+

@@ -8,10 +8,10 @@ Parameters:
     Description: RDS endpoint (e.g., dsapatterns-db.xxxxx.rds.amazonaws.com)
   DatabaseName:
     Type: String
-    Default: dsapatterns
+    Default: dsa-patterns
   DatabaseUsername:
     Type: String
-    Default: admin
+    Default: postgres
   DatabasePassword:
     Type: String
     NoEcho: true
@@ -34,6 +34,8 @@ Globals:
     Timeout: 30
     MemorySize: 512
     Runtime: python3.13
+    Architectures:
+      - x86_64
     Environment:
       Variables:
         RDS_HOST: !Ref DatabaseEndpoint
