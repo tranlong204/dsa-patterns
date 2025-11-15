@@ -172,8 +172,11 @@ class QueryBuilder:
                 query = f"SELECT {columns_str} FROM {self.table_name}"
                 
                 if self.conditions:
-                    # Replace $1, $2 with %s for psycopg2
-                    where_clause = ' AND '.join(self.conditions).replace('$', '%')
+                    # Replace $1, $2, etc. with %s for psycopg2
+                    where_clause = ' AND '.join(self.conditions)
+                    # Replace $1, $2, $3... with %s (but not other $ characters)
+                    import re
+                    where_clause = re.sub(r'\$\d+', '%s', where_clause)
                     query += f" WHERE {where_clause}"
                 
                 if self.order_by:

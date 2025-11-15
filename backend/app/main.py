@@ -37,3 +37,29 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/debug/database")
+async def debug_database():
+    """Debug endpoint to check which database is being used"""
+    import os
+    from app.database import get_supabase
+    
+    rds_host = os.getenv("RDS_HOST")
+    supabase_url = os.getenv("SUPABASE_URL")
+    
+    # Try to get the database client
+    try:
+        client = get_supabase()
+        db_type = "RDS" if rds_host else "Supabase"
+        return {
+            "RDS_HOST": "SET" if rds_host else "NOT SET",
+            "SUPABASE_URL": "SET" if supabase_url else "NOT SET",
+            "Database_Type": db_type,
+            "Client_Type": type(client).__name__
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "RDS_HOST": "SET" if rds_host else "NOT SET",
+            "SUPABASE_URL": "SET" if supabase_url else "NOT SET"
+        }
+
