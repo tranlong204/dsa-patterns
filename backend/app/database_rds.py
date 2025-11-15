@@ -75,7 +75,16 @@ class RDSClient:
                 if isinstance(value, (list, dict)):
                     values[i] = json.dumps(value)
             
-            query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders}) RETURNING *"
+            # For problem_company_tags, use ON CONFLICT DO NOTHING to handle duplicates
+            if self.table_name == 'problem_company_tags':
+                # Check if there's a unique constraint on (problem_id, tag_id)
+                query = f"""INSERT INTO {self.table_name} ({columns}) 
+                          VALUES ({placeholders}) 
+                          ON CONFLICT (problem_id, tag_id) DO NOTHING
+                          RETURNING *"""
+            else:
+                query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders}) RETURNING *"
+            
             cursor.execute(query, values)
             conn.commit()
             result = cursor.fetchone()
