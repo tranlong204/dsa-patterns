@@ -1,4 +1,7 @@
 // API client for backend integration
+// Version: 4 - Fixed double-stringification issue
+console.log('[api.js] Loaded version 4 - Fixed double-stringification');
+
 // Determine API base from URL param ?api= or localStorage override, fallback to localhost
 (function configureApiBase() {
     try {
@@ -73,16 +76,20 @@ class APIClient {
         // Handle request body - ensure proper JSON encoding
         if (options.body !== undefined) {
             const originalBody = options.body;
+            console.log('[request] Original body type:', typeof originalBody, 'value:', typeof originalBody === 'string' ? originalBody.substring(0, 100) : originalBody);
             
             // If body is already a string, check if it's JSON
             if (typeof originalBody === 'string') {
+                console.log('[request] Body is string, attempting to parse...');
                 try {
                     // Try to parse it - if it's valid JSON, it means it was double-stringified
                     const parsed = JSON.parse(originalBody);
+                    console.log('[request] Successfully parsed string body, re-stringifying');
                     // Re-stringify it properly
                     config.body = JSON.stringify(parsed);
                     config.headers['Content-Type'] = 'application/json';
                 } catch (e) {
+                    console.warn('[request] Body is string but not valid JSON:', e.message);
                     // Not valid JSON, treat as plain text
                     config.body = originalBody;
                     if (!config.headers['Content-Type']) {
@@ -90,13 +97,18 @@ class APIClient {
                     }
                 }
             } else if (typeof originalBody === 'object' && !(originalBody instanceof FormData) && !(originalBody instanceof URLSearchParams)) {
+                console.log('[request] Body is object, stringifying...');
                 // Convert object to JSON string - this is the normal case
                 config.body = JSON.stringify(originalBody);
                 config.headers['Content-Type'] = 'application/json';
             } else {
+                console.log('[request] Body is other type, using as-is');
                 // Other types (FormData, URLSearchParams, etc.) - use as-is
                 config.body = originalBody;
             }
+            
+            console.log('[request] Final body type:', typeof config.body, 'Content-Type:', config.headers['Content-Type']);
+            console.log('[request] Final body preview:', typeof config.body === 'string' ? config.body.substring(0, 150) : config.body);
         }
         
         // Copy other options (but not body, which we already handled)
