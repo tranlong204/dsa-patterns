@@ -68,11 +68,12 @@ class APIClient {
 
         // Handle request body - ensure proper JSON encoding
         if (config.body !== undefined) {
-            // If body is already a string, check if it's JSON
+            // If body is already a string, parse it first to ensure it's not double-stringified
             if (typeof config.body === 'string') {
-                // If it's already a JSON string, just set Content-Type
                 try {
-                    JSON.parse(config.body); // Validate it's valid JSON
+                    // Try to parse it - if it's valid JSON, parse it and re-stringify to ensure consistency
+                    const parsed = JSON.parse(config.body);
+                    config.body = JSON.stringify(parsed);
                     config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
                 } catch (e) {
                     // Not valid JSON, treat as plain text
@@ -135,7 +136,18 @@ class APIClient {
 
     async createProblem(problemData) {
         // Ensure we pass a plain object, not a string
-        const body = typeof problemData === 'string' ? JSON.parse(problemData) : problemData;
+        let body = problemData;
+        if (typeof problemData === 'string') {
+            try {
+                body = JSON.parse(problemData);
+            } catch (e) {
+                console.error('Failed to parse problemData as JSON:', e);
+                throw new Error('Invalid problem data format');
+            }
+        }
+        
+        console.log('createProblem - body type:', typeof body, 'body:', body);
+        
         return await this.request('/api/problems/', {
             method: 'POST',
             headers: {
