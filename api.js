@@ -76,39 +76,31 @@ class APIClient {
         // Handle request body - ensure proper JSON encoding
         if (options.body !== undefined) {
             const originalBody = options.body;
-            console.log('[request] Original body type:', typeof originalBody, 'value:', typeof originalBody === 'string' ? originalBody.substring(0, 100) : originalBody);
             
-            // If body is already a string, check if it's JSON
+            // CRITICAL FIX: If body is a string, it means it was already stringified (double-stringification bug)
+            // Parse it and re-stringify it ONCE
             if (typeof originalBody === 'string') {
-                console.log('[request] Body is string, attempting to parse...');
+                console.error('[request] ERROR: Body is already a string! This should not happen. Parsing and fixing...');
                 try {
-                    // Try to parse it - if it's valid JSON, it means it was double-stringified
+                    // Parse the string to get the actual object
                     const parsed = JSON.parse(originalBody);
-                    console.log('[request] Successfully parsed string body, re-stringifying');
-                    // Re-stringify it properly
+                    // Now stringify it ONCE for the actual request
                     config.body = JSON.stringify(parsed);
                     config.headers['Content-Type'] = 'application/json';
+                    console.log('[request] Fixed double-stringification');
                 } catch (e) {
-                    console.warn('[request] Body is string but not valid JSON:', e.message);
-                    // Not valid JSON, treat as plain text
-                    config.body = originalBody;
-                    if (!config.headers['Content-Type']) {
-                        config.headers['Content-Type'] = 'text/plain';
-                    }
+                    console.error('[request] Failed to parse string body:', e);
+                    // If it's not valid JSON, something is very wrong
+                    throw new Error('Request body is a string but not valid JSON');
                 }
-            } else if (typeof originalBody === 'object' && !(originalBody instanceof FormData) && !(originalBody instanceof URLSearchParams)) {
-                console.log('[request] Body is object, stringifying...');
-                // Convert object to JSON string - this is the normal case
+            } else if (typeof originalBody === 'object' && originalBody !== null && !(originalBody instanceof FormData) && !(originalBody instanceof URLSearchParams)) {
+                // Normal case: body is an object, stringify it ONCE
                 config.body = JSON.stringify(originalBody);
                 config.headers['Content-Type'] = 'application/json';
             } else {
-                console.log('[request] Body is other type, using as-is');
                 // Other types (FormData, URLSearchParams, etc.) - use as-is
                 config.body = originalBody;
             }
-            
-            console.log('[request] Final body type:', typeof config.body, 'Content-Type:', config.headers['Content-Type']);
-            console.log('[request] Final body preview:', typeof config.body === 'string' ? config.body.substring(0, 150) : config.body);
         }
         
         // Copy other options (but not body, which we already handled)
@@ -167,25 +159,35 @@ class APIClient {
     }
 
     async createProblem(problemData) {
-        // Ensure we pass a plain object, not a string
+        // CRITICAL: Ensure we always pass a plain object, never a string
         let body = problemData;
+        
+        // If it's already a string, parse it
         if (typeof problemData === 'string') {
             try {
                 body = JSON.parse(problemData);
+                console.warn('[createProblem] Received string, parsed to object');
             } catch (e) {
-                console.error('Failed to parse problemData as JSON:', e);
+                console.error('[createProblem] Failed to parse string as JSON:', e);
                 throw new Error('Invalid problem data format');
             }
         }
         
-        console.log('createProblem - body type:', typeof body, 'body:', body);
+        // Double-check it's an object
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+            console.error('[createProblem] Body is not a plain object:', typeof body, body);
+            throw new Error('Problem data must be a plain object');
+        }
         
+        console.log('[createProblem] Sending object:', Object.keys(body));
+        
+        // Call request with the object - request() will handle stringification
         return await this.request('/api/problems/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: body  // Pass as object, request() will stringify it
+            body: body  // This MUST be an object at this point
         });
     }
 
