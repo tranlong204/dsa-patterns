@@ -53,17 +53,16 @@ class APIClient {
     async request(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
         
-        // Extract body separately to handle it properly
-        const originalBody = options.body;
-        const { body: _, ...restOptions } = options;
-        
+        // Build config explicitly to avoid any spreading issues
         const config = {
-            method: restOptions.method || 'GET',
-            headers: {
-                ...(restOptions.headers || {})
-            },
-            ...restOptions
+            method: options.method || 'GET',
+            headers: {}
         };
+        
+        // Copy headers explicitly
+        if (options.headers) {
+            Object.assign(config.headers, options.headers);
+        }
 
         // Attach Bearer token if available
         const token = localStorage.getItem('access_token');
@@ -72,28 +71,40 @@ class APIClient {
         }
 
         // Handle request body - ensure proper JSON encoding
-        if (originalBody !== undefined) {
-            // If body is already a string, parse it first to ensure it's not double-stringified
+        if (options.body !== undefined) {
+            const originalBody = options.body;
+            
+            // If body is already a string, check if it's JSON
             if (typeof originalBody === 'string') {
                 try {
-                    // Try to parse it - if it's valid JSON, parse it and re-stringify to ensure consistency
+                    // Try to parse it - if it's valid JSON, it means it was double-stringified
                     const parsed = JSON.parse(originalBody);
+                    // Re-stringify it properly
                     config.body = JSON.stringify(parsed);
-                    config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+                    config.headers['Content-Type'] = 'application/json';
                 } catch (e) {
                     // Not valid JSON, treat as plain text
                     config.body = originalBody;
-                    config.headers['Content-Type'] = config.headers['Content-Type'] || 'text/plain';
+                    if (!config.headers['Content-Type']) {
+                        config.headers['Content-Type'] = 'text/plain';
+                    }
                 }
             } else if (typeof originalBody === 'object' && !(originalBody instanceof FormData) && !(originalBody instanceof URLSearchParams)) {
-                // Convert object to JSON string
+                // Convert object to JSON string - this is the normal case
                 config.body = JSON.stringify(originalBody);
-                config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+                config.headers['Content-Type'] = 'application/json';
             } else {
                 // Other types (FormData, URLSearchParams, etc.) - use as-is
                 config.body = originalBody;
             }
         }
+        
+        // Copy other options (but not body, which we already handled)
+        if (options.credentials) config.credentials = options.credentials;
+        if (options.mode) config.mode = options.mode;
+        if (options.cache) config.cache = options.cache;
+        if (options.redirect) config.redirect = options.redirect;
+        if (options.referrer) config.referrer = options.referrer;
 
         try {
             const response = await fetch(url, config);
