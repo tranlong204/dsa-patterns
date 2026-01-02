@@ -719,7 +719,13 @@ function createSubcategory(name, problems) {
     const addProblemBtn = document.createElement('div');
     addProblemBtn.className = 'add-problem-btn';
     addProblemBtn.innerHTML = '<button class="add-btn">+ Add Problem</button>';
-    addProblemBtn.onclick = () => showAddProblemModal(name, problems.length > 0 ? problems[0].topics : []);
+    addProblemBtn.onclick = () => {
+        // Use topics from first problem if available, otherwise use subcategory name as default topic
+        const defaultTopics = problems.length > 0 && problems[0].topics && problems[0].topics.length > 0 
+            ? problems[0].topics 
+            : [name]; // Use subcategory name as default topic
+        showAddProblemModal(name, defaultTopics);
+    };
     subContent.appendChild(addProblemBtn);
     
     // Add event listener
@@ -1416,11 +1422,18 @@ function showAddProblemModal(subtopic, topics) {
     const oldHandler = form.onclick;
     form.onsubmit = async (e) => {
         e.preventDefault();
+        // Ensure topics is a non-empty array
+        let problemTopics = Array.isArray(topics) ? topics : (topics ? [topics] : []);
+        if (problemTopics.length === 0) {
+            // If no topics provided, use subtopic as default
+            problemTopics = [subtopic] || ['General'];
+        }
+        
         const problemData = {
             number: parseInt(document.getElementById('problemNumber').value),
             title: document.getElementById('problemTitle').value,
             difficulty: document.getElementById('problemDifficulty').value,
-            topics: Array.isArray(topics) ? topics : (topics ? [topics] : []),
+            topics: problemTopics,
             link: document.getElementById('problemLink').value,
             subtopic: subtopic
         };
