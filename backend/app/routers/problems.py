@@ -3,7 +3,6 @@ from app.database import get_supabase
 from app.models import Problem, ProblemCreate, ProblemUpdate
 from typing import List, Optional
 import json
-import os
 
 router = APIRouter()
 
@@ -60,16 +59,13 @@ async def create_problem(problem: ProblemCreate):
         supabase = get_supabase()
         data = problem.dict()
         
-        # Check if we're using RDS or Supabase
-        # RDS client expects raw list/dict, Supabase expects JSON string
-        is_rds = os.getenv("RDS_HOST") is not None
-        
         # Explicitly build insert dict without id
+        # Pass raw list - both Supabase and RDS clients handle JSON conversion automatically
         insert_data = {
             'number': data['number'],
             'title': data['title'],
             'difficulty': data['difficulty'],
-            'topics': data['topics'] if is_rds else json.dumps(data['topics']),
+            'topics': data['topics'],  # Raw list - clients handle JSON conversion
             'link': data['link'],
         }
         if 'subtopic' in data and data['subtopic']:
@@ -103,14 +99,8 @@ async def update_problem(problem_id: int, problem: ProblemUpdate):
         logger.info(f"update_problem: Using database client type: {type(supabase).__name__}")
         data = problem.dict(exclude_none=True)
         
-        # Check if we're using RDS or Supabase
-        # RDS client expects raw list/dict, Supabase expects JSON string
-        is_rds = os.getenv("RDS_HOST") is not None
-        
-        # Convert topics to JSON if present (only for Supabase)
-        if 'topics' in data and data['topics']:
-            if not is_rds:
-                data['topics'] = json.dumps(data['topics'])
+        # Both Supabase and RDS clients handle raw lists/dicts
+        # No need to convert - pass raw list and let clients handle JSON conversion
         
         response = supabase.table("problems").update(data).eq("id", problem_id).execute()
         if not response.data:
