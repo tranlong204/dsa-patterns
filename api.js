@@ -52,12 +52,17 @@ class APIClient {
 
     async request(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
+        
+        // Extract body separately to handle it properly
+        const originalBody = options.body;
+        const { body: _, ...restOptions } = options;
+        
         const config = {
-            method: options.method || 'GET',
+            method: restOptions.method || 'GET',
             headers: {
-                ...(options.headers || {})
+                ...(restOptions.headers || {})
             },
-            ...options
+            ...restOptions
         };
 
         // Attach Bearer token if available
@@ -67,32 +72,27 @@ class APIClient {
         }
 
         // Handle request body - ensure proper JSON encoding
-        if (config.body !== undefined) {
-            console.log('[request] Body type before processing:', typeof config.body, 'is string?', typeof config.body === 'string');
-            
+        if (originalBody !== undefined) {
             // If body is already a string, parse it first to ensure it's not double-stringified
-            if (typeof config.body === 'string') {
-                console.log('[request] Body is string, attempting to parse:', config.body.substring(0, 100));
+            if (typeof originalBody === 'string') {
                 try {
                     // Try to parse it - if it's valid JSON, parse it and re-stringify to ensure consistency
-                    const parsed = JSON.parse(config.body);
-                    console.log('[request] Parsed successfully, re-stringifying');
+                    const parsed = JSON.parse(originalBody);
                     config.body = JSON.stringify(parsed);
                     config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
                 } catch (e) {
-                    console.warn('[request] Body is string but not valid JSON, treating as plain text');
                     // Not valid JSON, treat as plain text
+                    config.body = originalBody;
                     config.headers['Content-Type'] = config.headers['Content-Type'] || 'text/plain';
                 }
-            } else if (typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
+            } else if (typeof originalBody === 'object' && !(originalBody instanceof FormData) && !(originalBody instanceof URLSearchParams)) {
                 // Convert object to JSON string
-                console.log('[request] Body is object, stringifying:', Object.keys(config.body));
-                config.body = JSON.stringify(config.body);
+                config.body = JSON.stringify(originalBody);
                 config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+            } else {
+                // Other types (FormData, URLSearchParams, etc.) - use as-is
+                config.body = originalBody;
             }
-            
-            console.log('[request] Final body type:', typeof config.body, 'Content-Type:', config.headers['Content-Type']);
-            console.log('[request] Final body (first 200 chars):', typeof config.body === 'string' ? config.body.substring(0, 200) : 'not a string');
         }
 
         try {
