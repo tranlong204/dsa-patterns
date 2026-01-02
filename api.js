@@ -68,22 +68,31 @@ class APIClient {
 
         // Handle request body - ensure proper JSON encoding
         if (config.body !== undefined) {
+            console.log('[request] Body type before processing:', typeof config.body, 'is string?', typeof config.body === 'string');
+            
             // If body is already a string, parse it first to ensure it's not double-stringified
             if (typeof config.body === 'string') {
+                console.log('[request] Body is string, attempting to parse:', config.body.substring(0, 100));
                 try {
                     // Try to parse it - if it's valid JSON, parse it and re-stringify to ensure consistency
                     const parsed = JSON.parse(config.body);
+                    console.log('[request] Parsed successfully, re-stringifying');
                     config.body = JSON.stringify(parsed);
                     config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
                 } catch (e) {
+                    console.warn('[request] Body is string but not valid JSON, treating as plain text');
                     // Not valid JSON, treat as plain text
                     config.headers['Content-Type'] = config.headers['Content-Type'] || 'text/plain';
                 }
             } else if (typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
                 // Convert object to JSON string
+                console.log('[request] Body is object, stringifying:', Object.keys(config.body));
                 config.body = JSON.stringify(config.body);
                 config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
             }
+            
+            console.log('[request] Final body type:', typeof config.body, 'Content-Type:', config.headers['Content-Type']);
+            console.log('[request] Final body (first 200 chars):', typeof config.body === 'string' ? config.body.substring(0, 200) : 'not a string');
         }
 
         try {
