@@ -113,7 +113,7 @@ class APIClient {
     async createProblem(problemData) {
         return await this.request('/api/problems/', {
             method: 'POST',
-            body: JSON.stringify(problemData)
+            body: problemData  // Pass as object, request() will stringify it
         });
     }
 
