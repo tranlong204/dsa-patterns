@@ -66,9 +66,20 @@ class APIClient {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
 
-        // Only set JSON content-type when sending a JSON body
+        // Handle request body - ensure proper JSON encoding
         if (config.body !== undefined) {
-            if (typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
+            // If body is already a string, check if it's JSON
+            if (typeof config.body === 'string') {
+                // If it's already a JSON string, just set Content-Type
+                try {
+                    JSON.parse(config.body); // Validate it's valid JSON
+                    config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
+                } catch (e) {
+                    // Not valid JSON, treat as plain text
+                    config.headers['Content-Type'] = config.headers['Content-Type'] || 'text/plain';
+                }
+            } else if (typeof config.body === 'object' && !(config.body instanceof FormData) && !(config.body instanceof URLSearchParams)) {
+                // Convert object to JSON string
                 config.body = JSON.stringify(config.body);
                 config.headers['Content-Type'] = config.headers['Content-Type'] || 'application/json';
             }
