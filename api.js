@@ -134,9 +134,14 @@ class APIClient {
     }
 
     async createProblem(problemData) {
+        // Ensure we pass a plain object, not a string
+        const body = typeof problemData === 'string' ? JSON.parse(problemData) : problemData;
         return await this.request('/api/problems/', {
             method: 'POST',
-            body: problemData  // Pass as object, request() will stringify it
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: body  // Pass as object, request() will stringify it
         });
     }
 
