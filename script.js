@@ -1420,10 +1420,12 @@ function showAddProblemModal(subtopic, topics) {
             number: parseInt(document.getElementById('problemNumber').value),
             title: document.getElementById('problemTitle').value,
             difficulty: document.getElementById('problemDifficulty').value,
-            topics: topics,
+            topics: Array.isArray(topics) ? topics : (topics ? [topics] : []),
             link: document.getElementById('problemLink').value,
             subtopic: subtopic
         };
+        
+        console.log('Creating problem with data:', problemData);
         
         try {
             const newProblem = await api.createProblem(problemData);
