@@ -3,6 +3,7 @@ from app.database import get_supabase
 from app.models import Problem, ProblemCreate, ProblemUpdate
 from typing import List, Optional
 import json
+import os
 
 router = APIRouter()
 
@@ -57,14 +58,18 @@ async def create_problem(problem: ProblemCreate):
     """Create a new problem"""
     try:
         supabase = get_supabase()
-        # Convert topics list to JSON string for Supabase
         data = problem.dict()
+        
+        # Check if we're using RDS or Supabase
+        # RDS client expects raw list/dict, Supabase expects JSON string
+        is_rds = os.getenv("RDS_HOST") is not None
+        
         # Explicitly build insert dict without id
         insert_data = {
             'number': data['number'],
             'title': data['title'],
             'difficulty': data['difficulty'],
-            'topics': json.dumps(data['topics']),
+            'topics': data['topics'] if is_rds else json.dumps(data['topics']),
             'link': data['link'],
         }
         if 'subtopic' in data and data['subtopic']:
@@ -73,11 +78,18 @@ async def create_problem(problem: ProblemCreate):
             insert_data['solution_text'] = data['solution_text']
         
         response = supabase.table("problems").insert(insert_data).execute()
+        
+        # Handle empty response (e.g., ON CONFLICT DO NOTHING in RDS)
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to create problem - possibly duplicate or constraint violation")
+        
         result = response.data[0]
-        # Parse topics from JSON string to list
+        # Parse topics from JSON string to list if needed
         if isinstance(result.get('topics'), str):
             result['topics'] = json.loads(result['topics'])
         return Problem(**result)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -91,14 +103,24 @@ async def update_problem(problem_id: int, problem: ProblemUpdate):
         logger.info(f"update_problem: Using database client type: {type(supabase).__name__}")
         data = problem.dict(exclude_none=True)
         
-        # Convert topics to JSON if present
+        # Check if we're using RDS or Supabase
+        # RDS client expects raw list/dict, Supabase expects JSON string
+        is_rds = os.getenv("RDS_HOST") is not None
+        
+        # Convert topics to JSON if present (only for Supabase)
         if 'topics' in data and data['topics']:
-            data['topics'] = json.dumps(data['topics'])
+            if not is_rds:
+                data['topics'] = json.dumps(data['topics'])
         
         response = supabase.table("problems").update(data).eq("id", problem_id).execute()
         if not response.data:
             raise HTTPException(status_code=404, detail="Problem not found")
-        return Problem(**response.data[0])
+        
+        result = response.data[0]
+        # Parse topics from JSON string to list if needed
+        if isinstance(result.get('topics'), str):
+            result['topics'] = json.loads(result['topics'])
+        return Problem(**result)
     except HTTPException:
         raise
     except Exception as e:
