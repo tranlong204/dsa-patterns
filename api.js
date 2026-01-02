@@ -77,8 +77,20 @@ class APIClient {
         try {
             const response = await fetch(url, config);
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('API error response:', errorText);
+                let errorText;
+                try {
+                    errorText = await response.text();
+                    // Try to parse as JSON for better error message
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorText = errorJson.detail || errorJson.message || errorText;
+                    } catch (e) {
+                        // Not JSON, use as-is
+                    }
+                } catch (e) {
+                    errorText = `HTTP ${response.status} ${response.statusText}`;
+                }
+                console.error('API error response:', errorText, 'Status:', response.status);
                 if (response.status === 401) {
                     // Clear invalid token
                     localStorage.removeItem('access_token');
@@ -88,7 +100,7 @@ class APIClient {
                     }
                     return;
                 }
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(errorText || `HTTP error! status: ${response.status}`);
             }
             return await response.json();
         } catch (error) {

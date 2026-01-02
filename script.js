@@ -1436,7 +1436,9 @@ function showAddProblemModal(subtopic, topics) {
             alert('Problem added successfully!');
         } catch (error) {
             console.error('Failed to add problem:', error);
-            alert('Failed to add problem. Please try again.');
+            const errorMessage = error.message || error.toString() || 'Unknown error';
+            console.error('Full error details:', error);
+            alert(`Failed to add problem: ${errorMessage}`);
         }
     };
 }
