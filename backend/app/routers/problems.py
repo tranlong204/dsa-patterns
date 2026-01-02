@@ -55,9 +55,18 @@ async def get_problem(problem_id: int):
 @router.post("/", response_model=Problem)
 async def create_problem(problem: ProblemCreate):
     """Create a new problem"""
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         supabase = get_supabase()
         data = problem.dict()
+        
+        logger.info(f"Creating problem: number={data.get('number')}, title={data.get('title')}, topics={data.get('topics')}")
+        
+        # Ensure topics is a list
+        topics = data.get('topics', [])
+        if not isinstance(topics, list):
+            topics = [topics] if topics else []
         
         # Explicitly build insert dict without id
         # Pass raw list - both Supabase and RDS clients handle JSON conversion automatically
@@ -65,7 +74,7 @@ async def create_problem(problem: ProblemCreate):
             'number': data['number'],
             'title': data['title'],
             'difficulty': data['difficulty'],
-            'topics': data['topics'],  # Raw list - clients handle JSON conversion
+            'topics': topics,  # Raw list - clients handle JSON conversion
             'link': data['link'],
         }
         if 'subtopic' in data and data['subtopic']:
@@ -73,13 +82,18 @@ async def create_problem(problem: ProblemCreate):
         if 'solution_text' in data and data['solution_text']:
             insert_data['solution_text'] = data['solution_text']
         
+        logger.info(f"Insert data: {insert_data}")
+        
         response = supabase.table("problems").insert(insert_data).execute()
         
         # Handle empty response (e.g., ON CONFLICT DO NOTHING in RDS)
         if not response.data:
+            logger.error("Empty response from Supabase insert")
             raise HTTPException(status_code=400, detail="Failed to create problem - possibly duplicate or constraint violation")
         
         result = response.data[0]
+        logger.info(f"Problem created successfully: id={result.get('id')}")
+        
         # Parse topics from JSON string to list if needed
         if isinstance(result.get('topics'), str):
             result['topics'] = json.loads(result['topics'])
@@ -87,6 +101,7 @@ async def create_problem(problem: ProblemCreate):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error creating problem: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{problem_id}", response_model=Problem)
