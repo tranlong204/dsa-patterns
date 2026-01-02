@@ -63,10 +63,12 @@ async def create_problem(problem: ProblemCreate):
         
         logger.info(f"Creating problem: number={data.get('number')}, title={data.get('title')}, topics={data.get('topics')}")
         
-        # Ensure topics is a list
+        # Ensure topics is a list and not empty
         topics = data.get('topics', [])
         if not isinstance(topics, list):
             topics = [topics] if topics else []
+        if not topics or len(topics) == 0:
+            raise HTTPException(status_code=400, detail="At least one topic is required")
         
         # Explicitly build insert dict without id
         # Pass raw list - both Supabase and RDS clients handle JSON conversion automatically
